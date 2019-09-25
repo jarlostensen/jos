@@ -42,11 +42,16 @@
 *.idb
 *.pdb
 
+# ISOs and BINs
+*.iso
+*.bin
+
 # Kernel Module Compile Results
 *.mod*
 *.cmd
 .tmp_versions/
 modules.order
+isodir/
 Module.symvers
 Mkfile.old
 dkms.conf
