@@ -186,8 +186,8 @@ _start:
         ;BOCHS_BREAK
 
         lea esi, [dword prot_mode_string]
-        mov al, WHITEONBLUE
-        mov cl, 3
+        mov eax, WHITEONBLUE
+        mov ecx, 3
         call _prot_print_string
         
     ;    call check_a20_enabled
