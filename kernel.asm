@@ -32,7 +32,7 @@ hex_digits          db '0123456789abcdef'
 section .rodata
 ; =====================================================
 ;  a simple GDT fo a non-paged flat environment
-gdt:
+flat_gdt:
 .gdt_null:
    dq 0
 .gdt_code:
@@ -40,7 +40,7 @@ gdt:
    dw 0             ; base 0
    db 0             ; base contd.
    db 10011010b     ; type + privilege level + present
-   db 10011010b     ; limits + attributes + granularity + base
+   db 11001111b     ; limits + attributes + granularity + base
    db 0             ; last byte of base address
 .gdt_data:
    dw 0FFFFh        ; 4Gig limit
@@ -49,16 +49,17 @@ gdt:
    db 10010010b
    db 11001111b
    db 0
-.gdt_desc:
-;NOTE: 32 bit operand version
-    dw .gdt_desc - gdt
-    dd gdt
+gdt_desc dw $ - flat_gdt
+         dd flat_gdt
 
 section .text
 
 VGA_MEM equ 0xb8000
-GREEN equ 0x2e
-RED   equ 0x4e
+GREEN           equ 0x2e
+RED             equ 0x4e
+WHITEONBLUE     equ 0x1f
+
+%define BOCHS_BREAK xchg bx,bx
 
 _clear_screen:
     push eax
@@ -153,58 +154,59 @@ _start:
         xor cl,cl
         call _prot_print_string
 
-;.switch_to_protected_mode:
-;       cli
-;        xor ax,ax
-;        mov ds,ax
-;        lgdt [dword gdt.gdt_desc]
-;        mov eax, cr0
-;        or eax,1
-;        mov cr0, eax
-;        jmp dword 08h:.protected_mode
-
-;.protected_mode:
-;        ; data segment selector
-;        mov ax, 10h
-;        mov ds, ax
-;        mov es, ax
-;        mov fs, ax
-;        mov gs, ax
-;        mov ss, ax
-;        mov esp, stack_top
-;        sti
-
-        call check_a20_enabled
-        je .a20_not_enabled
-        lea esi, [dword a20_enabled_string]
+        lea esi, [dword real_mode_string]
         mov al, GREEN
         mov cl, 1
         call _prot_print_string
-        jmp .test_paging
+
+;.switch_to_protected_mode:
+        cli
+        lea esi, [dword gdt_desc]
+        lgdt [dword gdt_desc]
+        mov eax, cr0
+        or eax,1
+        mov cr0, eax
+        
+        jmp dword 08h:.protected_mode
+        nop
+        nop
+        nop
+
+.protected_mode:        
+        ; data segment selector
+        mov eax, 10h
+        mov ds, ax
+        mov es, ax
+        mov fs, ax
+        mov gs, ax
+        mov ss, ax
+        mov esp, stack_top
+        sti
+
+        ;BOCHS_BREAK
+
+        lea esi, [dword prot_mode_string]
+        mov al, WHITEONBLUE
+        mov cl, 3
+        call _prot_print_string
+        
+    ;    call check_a20_enabled
+    ;    je .a20_not_enabled
+    ;    lea esi, [dword a20_enabled_string]
+    ;    mov al, GREEN
+    ;    mov cl, 4
+    ;    call _prot_print_string
+
+        jmp .fi
+
 .a20_not_enabled:
         lea esi, [dword a20_not_enabled_string]
         mov al, RED
-        mov cl, 1
-        call _prot_print_string
+        mov cl, 4
+        call _prot_print_string        
 
-.test_paging:
-        mov eax, cr0
-        test al,1
-        je .print_P
-
-.print_R:
-        mov al, RED
-        mov cl, 2
-        lea esi, [dword real_mode_string]
-        ;call _prot_print_string
-        jmp .exit  
-
-.print_P:
-        mov al, GREEN
-        mov cl, 2
-        lea esi, [dword prot_mode_string]
-       ; call _prot_print_string
-        jmp .exit
+.fi:
+        BOCHS_BREAK
 
         cli
 .exit:  hlt
