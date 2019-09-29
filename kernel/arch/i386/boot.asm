@@ -25,59 +25,50 @@ align 16
     stack_top:
 
 section .data
-; empty
+extern _gdt_desc
+
 section .rodata
 ; empty 
 
 section .text
 
-; C-code kernel main, called with one parameter pointing to multiboot structure
+; C-code kernel init and main, called with one parameter pointing to multiboot structure
+extern _kinit
 extern _kmain
-
-%define BOCHS_BREAK xchg bx,bx
-
-global _bochs_debugbreak
-_bochs_debugbreak:
-    xchg bx,bx
-    ret
-
-global _lgdt
-; gdt = [esp+4]
-_lgdt:
-    push ebx
-    mov ebx, [esp+8]
-    lgdt [dword ebx]
-    pop ebx
-    ret
-
-;TODO: selector for code and and data as arguments?
-global _switch_to_protected_mode
-_switch_to_protected_mode:
-    mov eax, cr0
-    or eax,1
-    mov cr0, eax
-    
-    jmp dword 08h:.protected_mode
-    nop
-    nop    
-.protected_mode:        
-    mov eax, 10h
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
-    mov esp, stack_top
-    sti
-    xor eax,eax
-    ret
 
 global _start:function (_start.end - _start)
 _start:
-        mov esp, stack_top
+        mov ebp, stack_top
+        mov esp, ebp
+
         cld
         push ebx
-        call _kmain        
+        call _kinit
+        add esp, 4 
+
+        ; switch GDT
+        cli
+        lgdt [dword _gdt_desc]
+        mov eax, 10h
+        mov ds, ax
+        mov es, ax
+        mov fs, ax
+        mov gs, ax
+        ; this obviously depends on the new GDTs layout for data segments matching whatever we came from, or the ret won't happen
+        mov ss, ax            
+        jmp dword 08h:.flush
+    .flush:    
+        mov eax, cr0
+        or eax,1
+        mov cr0, eax
+        
+        jmp dword 08h:.protected_mode
+        nop
+        nop    
+    .protected_mode:
+        sti    
+        call _kmain
+
 .fi:
         cli
 .exit:  hlt

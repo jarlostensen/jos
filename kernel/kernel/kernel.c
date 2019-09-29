@@ -15,24 +15,23 @@ struct gdt32_descriptor
 {
     uint16_t size;
     uint32_t address;
-};
+} __attribute__((packed));
 typedef struct gdt32_descriptor gdt32_descriptor_t;
 
 // =======================================================
 
 // boot.asm
 extern void _bochs_debugbreak();
-// boot.asm
-extern void _lgdt(gdt32_descriptor_t*);
 
-static gdt_entry_t _gdt[3] = {
+gdt_entry_t _gdt[3] = {
     // null
     { .limit_low = 0, .base_low = 0, .base_middle = 0, .access = 0, .granularity = 0, .base_high = 0 },
     // code
-    { .limit_low = 0xffff, .base_low = 0, .base_middle = 0, .access = 0x9a, .granularity = 0xcf, .base_high = 0 },
+    { .limit_low = 0xffff, .base_low = 0, .base_middle = 0, .access = 0b10011010, .granularity = 0b11001111, .base_high = 0 },
     // data
-    { .limit_low = 0xffff, .base_low = 0, .base_middle = 0, .access = 0x92, .granularity = 0xcf, .base_high = 0 },
+    { .limit_low = 0xffff, .base_low = 0, .base_middle = 0, .access = 0b10010010, .granularity = 0b11001111, .base_high = 0 },
 };
+gdt32_descriptor_t _gdt_desc = {.size = sizeof(_gdt), .address = (uint32_t)(_gdt)};
 
 static const uint32_t kVgaMemBase = 0xb8000;
 static const uint32_t kVgaMemWords = 80*25;
@@ -41,7 +40,7 @@ static const uint32_t kVgaMemEnd = kVgaMemBase + kVgaMemWords*2;
 void clear_vga(char attr)
 {
     char* vga_ptr = (char*)(kVgaMemBase);
-    for(int c = 0; c < kVgaMemWords<<1; ++c)
+    for(unsigned c = 0; c < kVgaMemWords<<1; ++c)
     {
         vga_ptr[0] = 0x20;
         vga_ptr[1] = attr;
@@ -60,9 +59,15 @@ void write_to_vga(char* str, char attr, char x, char y)
     }
 }
 
-void _kmain(void* mboot)
+void _kinit(void *mboot)
+{     
+    (void)mboot;
+    clear_vga(0x1c);
+    write_to_vga("Initialising kernel", 0x1c, 0,0);         
+}
+
+void _kmain()
 {
     //_bochs_debugbreak();
-    clear_vga(0x1c);
-    write_to_vga("hello kernel world!", 0x2a, 4,4);
+    write_to_vga("_kmain, we're in protected mode", 0x2a, 0,3);       
 }
