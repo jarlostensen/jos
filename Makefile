@@ -1,30 +1,93 @@
-AS := nasm
-ASFLAGS := -f elf32
-#ASFLAGS := -f bin
+DEFAULT_HOST?=i686-elf
+HOST?=DEFAULT_HOST
+HOSTARCH?=i386
 
-LD := ld
-LDFLAGS := -melf_i386
-LDFILE := link.ld
+AS?=
+ASFLAGS?=
+CFLAGS?=-O2 -g
+CPPFLAGS?=
+LDFLAGS?=
+LIBS?=
 
-MKRESCUE := grub-mkrescue
+DESTDIR?=
+PREFIX?=/usr/local
+EXEC_PREFIX?=$(PREFIX)
+BOOTDIR?=$(EXEC_PREFIX)/boot
+INCLUDEDIR?=$(PREFIX)/include
 
-all: kernel
+CC:=$(HOME)/opt/cross/bin/i686-elf-gcc
 
-kernel: kernel.o 
-	$(LD) $(LDFLAGS) -T $(LDFILE) $< -o $@
-kernel.o: kernel.asm
-#kernel: kernel.asm
+CFLAGS:=$(CFLAGS) -ffreestanding -Wall -Wextra
+CPPFLAGS:=$(CPPFLAGS) -D__is_kernel -Iinclude
+LDFLAGS:=$(LDFLAGS)
+LIBS:=$(LIBS) -nostdlib -lgcc
+
+ARCHDIR=kernel/arch/$(HOSTARCH)
+
+include $(ARCHDIR)/make.config
+
+CFLAGS:=$(CFLAGS) $(KERNEL_ARCH_CFLAGS)
+CPPFLAGS:=$(CPPFLAGS) $(KERNEL_ARCH_CPPFLAGS)
+LDFLAGS:=$(LDFLAGS) $(KERNEL_ARCH_LDFLAGS)
+LIBS:=$(LIBS) $(KERNEL_ARCH_LIBS)
+
+KERNEL_OBJS=\
+$(KERNEL_ARCH_OBJS) \
+kernel/kernel/kernel.o \
+
+OBJS=\
+$(ARCHDIR)/crti.o \
+$(ARCHDIR)/crtbegin.o \
+$(KERNEL_OBJS) \
+$(ARCHDIR)/crtend.o \
+$(ARCHDIR)/crtn.o \
+
+LINK_LIST=\
+$(LDFLAGS) \
+$(ARCHDIR)/crti.o \
+$(ARCHDIR)/crtbegin.o \
+$(KERNEL_OBJS) \
+$(LIBS) \
+$(ARCHDIR)/crtend.o \
+$(ARCHDIR)/crtn.o \
+
+.PHONY: all clean install install-headers install-kernel
+.SUFFIXES: .o .c .asm
+
+all: jos.kernel
+
+jos.kernel: $(OBJS) $(ARCHDIR)/link.ld
+	$(CC) -T $(ARCHDIR)/link.ld -o $@ $(CFLAGS) $(LINK_LIST)
+	grub-file --is-x86-multiboot jos.kernel
+
+$(ARCHDIR)/crtbegin.o $(ARCHDIR)/crtend.o:
+	OBJ=`$(CC) $(CFLAGS) $(LDFLAGS) -print-file-name=$(@F)` && cp "$$OBJ" $@
+
+.c.o:
+	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS) $(CPPFLAGS)
+
+.asm.o:
 	$(AS) $(ASFLAGS) $< -o $@
 
-iso: kernel
-	mkdir -p isodir/boot/grub
-	cp kernel isodir/boot/
-	cp grub.cfg isodir/boot/grub
-	$(MKRESCUE) -o minimal.iso isodir
-
-iso2: kernel
-	cp kernel isodir/boot/
-	genisoimage -R -b boot/grub/stage2_eltorito -no-emul-boot -boot-load-size 4 -A os -input-charset utf8 -quiet -boot-info-table -o minimal.iso isodir
-
 clean:
-	rm -f *.o *.iso kernel isodir/boot/kernel 
+	rm -f jos.kernel
+	rm -f $(OBJS) *.o */*.o */*/*.o
+	rm -f $(OBJS:.o=.d) *.d */*.d */*/*.d
+
+install: install-headers install-kernel
+
+install-headers:
+	mkdir -p $(DESTDIR)$(INCLUDEDIR)
+	cp -R --preserve=timestamps include/. $(DESTDIR)$(INCLUDEDIR)/.
+
+install-kernel: jos.kernel
+	mkdir -p $(DESTDIR)$(BOOTDIR)
+	cp jos.kernel $(DESTDIR)$(BOOTDIR)
+
+iso: jos.kernel
+	mkdir -p isodir/boot/grub
+	cp jos.kernel isodir/boot/kernel
+	cp grub.cfg isodir/boot/grub
+	$(MKRESCUE) -o kernel.iso isodir
+
+-include $(OBJS:.o=.d)

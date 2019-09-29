@@ -42,9 +42,13 @@
 *.idb
 *.pdb
 
-# ISOs and BINs
+# ISOs and BINs and other gunk
 *.iso
 *.bin
+*.id*
+*.til
+*.nam
+*.kernel
 
 # Kernel Module Compile Results
 *.mod*
