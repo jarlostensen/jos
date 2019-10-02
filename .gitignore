@@ -12,15 +12,12 @@
 *.map
 *.exp
 
-# Precompiled Headers
-*.gch
-*.pch
-
 # Libraries
 *.lib
 *.a
 *.la
 *.lo
+*.o
 
 # Shared objects (inc. Windows DLLs)
 *.dll
