@@ -56,3 +56,4 @@ isodir/
 Module.symvers
 Mkfile.old
 dkms.conf
+sysroot/
