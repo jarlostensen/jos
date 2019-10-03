@@ -11,7 +11,8 @@ Built on knowledge from:
 ## Dependencies/Tools used
 
 * GCC cross compiler
-* Bochs emulator 
+* NASM
+* Bochs emulator
 * make
 * VSCode
 * Patience...

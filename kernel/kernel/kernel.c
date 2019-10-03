@@ -1,10 +1,8 @@
 #include <stdint.h>
+#include "kernel.h"
 #include "dt.h"
 
 // =======================================================
-
-// boot.asm
-extern void _bochs_debugbreak();
 
 gdt_entry_t _gdt[3] = {
     // null
