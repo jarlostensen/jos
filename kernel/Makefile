@@ -68,11 +68,6 @@ $(ARCHDIR)/crtbegin.o $(ARCHDIR)/crtend.o:
 .asm.o:
 	$(AS) $(ASFLAGS) $< -o $@
 
-clean:
-	rm -f jos.kernel
-	rm -f $(OBJS) *.o */*.o */*/*.o
-	rm -f $(OBJS:.o=.d) *.d */*.d */*/*.d
-
 install: install-headers install-kernel
 
 install-headers:
@@ -84,12 +79,14 @@ install-kernel: jos.kernel
 	cp jos.kernel $(DESTDIR)$(BOOTDIR)
 
 iso: install-kernel
+	mkdir -p isodir
+	mkdir -p isodir/boot
 	mkdir -p isodir/boot/grub
-	cp $(DESTDIR)$(BOOTDIR)/jos.kernel isodir/boot/kernel
+	cp $(DESTDIR)$(BOOTDIR)/jos.kernel isodir/boot/jos.kernel
 	cp grub.cfg isodir/boot/grub
 	$(MKRESCUE) -o kernel.iso isodir
 
-clean: 
+clean:
 	rm -f $(ARCHDIR) *.o
 	rm -f jos.kernel
 	rm -rf isodir
