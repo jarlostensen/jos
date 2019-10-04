@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include "kernel.h"
+#include "../include/kernel/kernel.h"
 #include "dt.h"
 
 // =======================================================
