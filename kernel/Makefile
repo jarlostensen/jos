@@ -89,4 +89,12 @@ iso: install-kernel
 	cp grub.cfg isodir/boot/grub
 	$(MKRESCUE) -o kernel.iso isodir
 
+clean: 
+	rm -f $(ARCHDIR) *.o
+	rm -f jos.kernel
+	rm -rf isodir
+	rm -f *.iso
+	rm -f $(OBJS) $(LIBK_OBJS) *.o */*.o */*/*.o
+	rm -f $(OBJS:.o=.d) $(LIBK_OBJS:.o=.d) *.d */*.d */*/*.d
+
 -include $(OBJS:.o=.d)
