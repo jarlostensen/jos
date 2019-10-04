@@ -20,7 +20,6 @@ CPPFLAGS:=$(CPPFLAGS) -D__is_libc -Iinclude
 LIBK_CFLAGS:=$(CFLAGS)
 LIBK_CPPFLAGS:=$(CPPFLAGS) -D__is_libk
 
-CC:=$(HOME)/opt/cross/bin/i686-elf-gcc
 ARCHDIR=arch/$(HOSTARCH)
 
 include $(ARCHDIR)/make.config
@@ -66,10 +65,10 @@ libk.a: $(LIBK_OBJS)
 	$(AR) rcs $@ $(LIBK_OBJS)
 
 .c.o:
-	$(CC) -MD -c --sysroot=$(SYSROOT) -isystem=$(INCLUDEDIR) $< -o $@ -std=gnu11 $(CFLAGS) $(CPPFLAGS)
+	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS) $(CPPFLAGS)
 
 .c.libk.o:
-	$(CC) -MD --sysroot=$(SYSROOT) -isystem=$(INCLUDEDIR) -c $< -o $@ -std=gnu11 $(LIBK_CFLAGS) $(LIBK_CPPFLAGS)
+	$(CC) -MD -c $< -o $@ -std=gnu11 $(LIBK_CFLAGS) $(LIBK_CPPFLAGS)
 
 .asm.libk.o:
 	$(AS) $(ASFLAGS) $< -o $@
