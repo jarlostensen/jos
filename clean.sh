@@ -1,10 +1,11 @@
 #!/bin/sh
-
-PROJECTS="libc kernel"
-
-export SYSROOT=$(pwd)/sysroot
-rm -rf $SYSROOT
+set -e
+. ./config.sh
 
 for PROJECT in $PROJECTS; do
-  (cd $PROJECT make clean)
+  (cd $PROJECT && $MAKE clean)
 done
+
+rm -rf sysroot
+rm -rf isodir
+rm -rf myos.iso

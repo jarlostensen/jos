@@ -1,9 +1,7 @@
-DEFAULT_HOST?=i686-elf
+DEFAULT_HOST!=../default-host.sh
 HOST?=DEFAULT_HOST
-HOSTARCH?=i386
+HOSTARCH!=../target-triplet-to-arch.sh $(HOST)
 
-AS?=
-ASFLAGS?=
 CFLAGS?=-O2 -g
 CPPFLAGS?=
 LDFLAGS?=
@@ -14,7 +12,6 @@ PREFIX?=/usr/local
 EXEC_PREFIX?=$(PREFIX)
 BOOTDIR?=$(EXEC_PREFIX)/boot
 INCLUDEDIR?=$(PREFIX)/include
-LIBDIR?=$(PREFIX)/lib
 
 CFLAGS:=$(CFLAGS) -ffreestanding -Wall -Wextra
 CPPFLAGS:=$(CPPFLAGS) -D__is_kernel -Iinclude
@@ -51,7 +48,7 @@ $(ARCHDIR)/crtend.o \
 $(ARCHDIR)/crtn.o \
 
 .PHONY: all clean install install-headers install-kernel
-.SUFFIXES: .o .c .asm
+.SUFFIXES: .o .c .S .asm
 
 all: jos.kernel
 
@@ -63,10 +60,18 @@ $(ARCHDIR)/crtbegin.o $(ARCHDIR)/crtend.o:
 	OBJ=`$(CC) $(CFLAGS) $(LDFLAGS) -print-file-name=$(@F)` && cp "$$OBJ" $@
 
 .c.o:
-	$(CC) -MD  -c $< -o $@ -std=gnu11 $(CFLAGS) $(CPPFLAGS)
+	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS) $(CPPFLAGS)
+
+.S.o:
+	$(CC) -MD -c $< -o $@ $(CFLAGS) $(CPPFLAGS)
 
 .asm.o:
 	$(AS) $(ASFLAGS) $< -o $@
+
+clean:
+	rm -f jos.kernel
+	rm -f $(OBJS) *.o */*.o */*/*.o
+	rm -f $(OBJS:.o=.d) *.d */*.d */*/*.d
 
 install: install-headers install-kernel
 
@@ -77,21 +82,5 @@ install-headers:
 install-kernel: jos.kernel
 	mkdir -p $(DESTDIR)$(BOOTDIR)
 	cp jos.kernel $(DESTDIR)$(BOOTDIR)
-
-iso: install-kernel
-	mkdir -p isodir
-	mkdir -p isodir/boot
-	mkdir -p isodir/boot/grub
-	cp $(DESTDIR)$(BOOTDIR)/jos.kernel isodir/boot/jos.kernel
-	cp grub.cfg isodir/boot/grub
-	$(MKRESCUE) -o kernel.iso isodir
-
-clean:
-	rm -f $(ARCHDIR) *.o
-	rm -f jos.kernel
-	rm -rf isodir
-	rm -f *.iso
-	rm -f $(OBJS) $(LIBK_OBJS) *.o */*.o */*/*.o
-	rm -f $(OBJS:.o=.d) $(LIBK_OBJS:.o=.d) *.d */*.d */*/*.d
 
 -include $(OBJS:.o=.d)

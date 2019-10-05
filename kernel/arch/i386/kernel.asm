@@ -8,8 +8,8 @@ section .rodata
 
 section .text
 
-global _bochs_debugbreak:function
-_bochs_debugbreak:
-    xchg bx,bx
-    ret
+;global _bochs_debugbreak:function
+;_bochs_debugbreak:
+;    xchg bx,bx
+;    ret
 

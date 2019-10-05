@@ -35,12 +35,12 @@ static void idt_set_gate(uint8_t i, uint16_t sel, uint32_t offset, idt_type_attr
     entry->selector = sel;
     entry->type_attr.fields = *type_attr;
     _isr_handlers[i] = handler;
-    printf("idt_set_gate for %x", i);
+    //printf("idt_set_gate for %x", i);
 }
 
 void isr3_handler(isr_stack_t stack)
 {
-    _bochs_debugbreak();
+    JOS_BOCHS_DBGBREAK();
     printf("isr3_handler, error code is %x\n", stack.error_code);
 }
 
@@ -49,12 +49,12 @@ void _kinit(void *mboot)
     (void)mboot;
     terminal_initialize();
     printf("_kinit\n");
-    
-    idt_set_gate(0,0x08,0,&(idt_type_attr_t){.gate_type = 1, .storage_segment = 0, .dpl = 3, .present = 1},isr3_handler);
+    JOS_BOCHS_DBGBREAK();
+    //idt_set_gate(0,0x08,0,&(idt_type_attr_t){.gate_type = 1, .storage_segment = 0, .dpl = 3, .present = 1},isr3_handler);
 }
 
 void _kmain()
 {
     //_bochs_debugbreak();
-    printf("_kmain\n");
+   printf("_kmain\n");
 }

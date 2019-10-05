@@ -1,9 +1,7 @@
-DEFAULT_HOST?=i686-elf
+DEFAULT_HOST!=../default-host.sh
 HOST?=DEFAULT_HOST
-HOSTARCH?=i386
+HOSTARCH!=../target-triplet-to-arch.sh $(HOST)
 
-AS?=
-ASFLAGS?=
 CFLAGS?=-O2 -g
 CPPFLAGS?=
 LDFLAGS?=
@@ -54,7 +52,7 @@ LIBK_OBJS=$(FREEOBJS:.o=.libk.o)
 BINARIES=libk.a
 
 .PHONY: all clean install install-headers install-libs
-.SUFFIXES: .o .libk.o .c .asm
+.SUFFIXES: .o .libk.o .c .S
 
 all: $(BINARIES)
 
@@ -67,11 +65,14 @@ libk.a: $(LIBK_OBJS)
 .c.o:
 	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS) $(CPPFLAGS)
 
+.c.S:
+	$(CC) -MD -c $< -o $@ $(CFLAGS) $(CPPFLAGS)
+
 .c.libk.o:
 	$(CC) -MD -c $< -o $@ -std=gnu11 $(LIBK_CFLAGS) $(LIBK_CPPFLAGS)
 
-.asm.libk.o:
-	$(AS) $(ASFLAGS) $< -o $@
+.S.libk.o:
+	$(CC) -MD -c $< -o $@ $(LIBK_CFLAGS) $(LIBK_CPPFLAGS)
 
 clean:
 	rm -f $(BINARIES) *.a

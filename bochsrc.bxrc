@@ -6,11 +6,14 @@ memory: host=32, guest=32
 romimage: file="i:\Program Files (x86)\Bochs-2.6.9/BIOS-bochs-latest", address=0x0, options=none
 vgaromimage: file="i:\Program Files (x86)\Bochs-2.6.9/VGABIOS-lgpl-latest"
 boot: cdrom
+romimage: file="C:\bochs-2.6.9-win64\Bochs-2.6.9/BIOS-bochs-latest", address=0x0, options=none
+vgaromimage: file="C:\bochs-2.6.9-win64\Bochs-2.6.9/VGABIOS-lgpl-latest"
+boot: floppy, cdrom
 floppy_bootsig_check: disabled=0
 # no floppya
 # no floppyb
 ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14
-ata0-master: type=cdrom, path="i:\Dev\osdev\jos\kernel\kernel.iso", status=inserted, model="Generic 1234", biosdetect=auto
+ata0-master: type=cdrom, path="C:\Dev\os_dev\jos\kernel\kernel.iso", status=inserted, model="Generic 1234", biosdetect=auto
 ata0-slave: type=none
 ata1: enabled=1, ioaddr1=0x170, ioaddr2=0x370, irq=15
 ata1-master: type=none
@@ -34,7 +37,7 @@ cpuid: aes=0, sha=0, xsave=0, xsaveopt=0, x86_64=1, 1g_pages=0, pcid=0, fsgsbase
 cpuid: smep=0, smap=0, mwait=1, vmx=1
 print_timestamps: enabled=0
 debugger_log: -
-magic_break: enabled=0
+magic_break: enabled=1
 port_e9_hack: enabled=0
 private_colormap: enabled=0
 clock: sync=none, time0=local, rtc_sync=0
