@@ -46,10 +46,9 @@ void isr3_handler(isr_stack_t stack)
 
 void _kinit(void *mboot)
 {     
-    (void)mboot;
     terminal_initialize();
     terminal_disable_cursor();
-    printf("_kinit: %s\n", is_protected_mode() ? "protected mode":"real mode");    
+    printf("_kinit(0x%x), %s\n", (int)mboot, is_protected_mode() ? "protected mode":"real mode");    
     idt_set_gate(0,0x08,0,&(idt_type_attr_t){.gate_type = 1, .storage_segment = 0, .dpl = 3, .present = 1},isr3_handler);
 }
 

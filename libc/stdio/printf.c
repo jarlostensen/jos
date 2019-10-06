@@ -12,18 +12,24 @@ static bool print(const char* data, size_t length) {
 	return true;
 }
 
-static int printdecimal(int d)
+static int printdecimal(long d)
 {
-	int written = 0;
+	int written = 0;	
     if (d < 0)
     {
         putchar((int)'-');
         d *= -1;
 		++written;
     }
+	if(d < 10)
+	{
+		putchar((int)'0'+(int)d);
+		return 1;
+	}
+
     // simple and dumb but it works...
-    int pow_10 = 1;
-    int dd = d;
+    long  pow_10 = 1;
+    long dd = d;
 
     // find highest power of 10 
     while (dd > 9)
@@ -34,7 +40,7 @@ static int printdecimal(int d)
 
     // print digits from MSD to LSD
     do {
-        putchar((int)'0' + dd);
+        putchar((int)'0' + (int)dd);
 		++written;
         // modulo
         d = d - (dd * pow_10);
@@ -47,7 +53,7 @@ static int printdecimal(int d)
     } while (pow_10 > 1);
     if(d)
 	{
-        putchar((int)'0' + dd);
+        putchar((int)'0' + (int)dd);
 		++written;
 	}
     else
@@ -61,6 +67,49 @@ static int printdecimal(int d)
         }
 	}
 	return written;
+}
+
+static int printhex(long d)
+{
+    static const char* kHexDigits = "0123456789abcdef";
+    int written = 0;
+    if (d < 0)
+    {
+        d *= -1;
+        putchar((int)'-');
+        written = 1;
+    }
+    if (d <= 256)
+    {
+        if(d > 16)
+            putchar((int)kHexDigits[(d&0xf0)>>4]);
+        putchar((int)kHexDigits[(d & 0xf)]);
+        return 1;
+    }    
+    int high_idx = 0;
+    long dd = d;
+    while (dd > 15)
+    {
+        dd >>= 4;
+        ++high_idx;
+    }
+    // convert to byte offset
+    high_idx >>= 1;
+	// read from MSD to LSD
+    const char* bytes = (const char*)(&d) + high_idx;    
+    do
+    {
+		//NOTE: this will always "pad" the output to an even number of nybbles
+        size_t lo = *bytes & 0x0f;
+        size_t hi = (*bytes & 0xf0)>>4;
+        putchar((int)kHexDigits[hi]);
+        putchar((int)kHexDigits[lo]);
+        written += 2;
+        --high_idx;
+        --bytes;
+    } while (high_idx>=0);
+
+    return written;
 }
 
 int printf(const char* restrict format, ...) {
@@ -113,13 +162,26 @@ int printf(const char* restrict format, ...) {
 				return -1;
 			written += len;
 		}
-		else if (*format == 'd') {
+		else if (*format == 'd' || *format == 'l') {
 			format++;
-			int d = (int) va_arg(parameters, int);
+			long d;
+			if(format[0]=='d')
+				d = (long) va_arg(parameters, int);
+			else
+				d = (long) va_arg(parameters, long);
 			if(!maxrem)
 				return -1;
 			
 			written += printdecimal(d);
+		}
+		else if (*format == 'x') {
+			format++;
+			long d;
+			d = (long) va_arg(parameters, int);
+			if(!maxrem)
+				return -1;
+			
+			written += printhex(d);
 		}
 		 else {
 			format = format_begun_at;
