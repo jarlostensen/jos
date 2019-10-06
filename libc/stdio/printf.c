@@ -12,6 +12,57 @@ static bool print(const char* data, size_t length) {
 	return true;
 }
 
+static int printdecimal(int d)
+{
+	int written = 0;
+    if (d < 0)
+    {
+        putchar((int)'-');
+        d *= -1;
+		++written;
+    }
+    // simple and dumb but it works...
+    int pow_10 = 1;
+    int dd = d;
+
+    // find highest power of 10 
+    while (dd > 9)
+    {
+        dd /= 10;
+        pow_10 *= 10;
+    }
+
+    // print digits from MSD to LSD
+    do {
+        putchar((int)'0' + dd);
+		++written;
+        // modulo
+        d = d - (dd * pow_10);
+        if (!d)
+            break;
+        dd = d;
+        while (dd > 9)
+            dd /= 10;
+        pow_10 /= 10;
+    } while (pow_10 > 1);
+    if(d)
+	{
+        putchar((int)'0' + dd);
+		++written;
+	}
+    else
+	{
+        // trailing zeros
+        while (pow_10 > 1)
+        {
+            putchar((int)'0');
+            pow_10 /= 10;
+			++written;
+        }
+	}
+	return written;
+}
+
 int printf(const char* restrict format, ...) {
 	va_list parameters;
 	va_start(parameters, format);
@@ -61,7 +112,16 @@ int printf(const char* restrict format, ...) {
 			if (!print(str, len))
 				return -1;
 			written += len;
-		} else {
+		}
+		else if (*format == 'd') {
+			format++;
+			int d = (int) va_arg(parameters, int);
+			if(!maxrem)
+				return -1;
+			
+			written += printdecimal(d);
+		}
+		 else {
 			format = format_begun_at;
 			size_t len = strlen(format);
 			if (maxrem < len) {

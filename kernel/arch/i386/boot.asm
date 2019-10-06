@@ -66,7 +66,7 @@ _start:
         nop
         nop    
     .protected_mode:
-        sti    
+        ;ZZZ: sti    
         call _kmain
 
 .fi:

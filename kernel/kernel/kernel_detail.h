@@ -54,5 +54,8 @@ typedef struct isr_stack_struct isr_stack_t;
 
 typedef void (*isr_handler_func_t)(isr_stack_t isr_stack);
 
+extern void enable_interrupts();
+extern void disable_interrupts();
+
 
 #endif // JOS_KERNEL_DETAIL_H

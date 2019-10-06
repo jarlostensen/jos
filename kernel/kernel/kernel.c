@@ -48,13 +48,12 @@ void _kinit(void *mboot)
 {     
     (void)mboot;
     terminal_initialize();
-    printf("_kinit\n");
-    JOS_BOCHS_DBGBREAK();
-    //idt_set_gate(0,0x08,0,&(idt_type_attr_t){.gate_type = 1, .storage_segment = 0, .dpl = 3, .present = 1},isr3_handler);
+    terminal_disable_cursor();
+    printf("_kinit: %s\n", is_protected_mode() ? "protected mode":"real mode");    
+    idt_set_gate(0,0x08,0,&(idt_type_attr_t){.gate_type = 1, .storage_segment = 0, .dpl = 3, .present = 1},isr3_handler);
 }
 
 void _kmain()
 {
-    //_bochs_debugbreak();
-   printf("_kmain\n");
+    printf("_kmain %s\n", is_protected_mode() ? "protected mode":"real mode");    
 }
