@@ -60,3 +60,11 @@ global disable_interrupts:function
 disable_interrupts:
     cli
     ret
+
+; hard stop, used by kernel_panic
+global halt_cpu:function
+halt_cpu:
+    cli
+.halt_cpu:
+    hlt 
+    jmp .halt_cpu

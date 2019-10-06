@@ -6,6 +6,7 @@
 
 #include "kernel_detail.h"
 #include "dt.h"
+#include "../arch/i386/vga.h"
 
 // =======================================================
 
@@ -44,15 +45,28 @@ void isr3_handler(isr_stack_t stack)
     printf("isr3_handler, error code is %x\n", stack.error_code);
 }
 
+void kernel_panic()
+{
+    terminal_set_colour(vga_entry_color(VGA_COLOR_WHITE,VGA_COLOR_LIGHT_BLUE));
+    terminal_writestring("KERNEL PANIC!");
+    halt_cpu();
+}
+
 void _kinit(void *mboot)
 {     
+    kalloc_init();
     terminal_initialize();
     terminal_disable_cursor();
     printf("_kinit(0x%x), %s\n", (int)mboot, is_protected_mode() ? "protected mode":"real mode");    
     idt_set_gate(0,0x08,0,&(idt_type_attr_t){.gate_type = 1, .storage_segment = 0, .dpl = 3, .present = 1},isr3_handler);
+
+    void* allocated = kalloc(1024, kNone);
+    memset(allocated, 0xdd, 1024);
+    printf(" allocated and cleared memory at 0x%x\n", (int)allocated - 0x10000);
 }
 
 void _kmain()
 {
     printf("_kmain %s\n", is_protected_mode() ? "protected mode":"real mode");    
+    kernel_panic();
 }

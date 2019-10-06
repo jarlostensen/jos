@@ -41,6 +41,11 @@ void terminal_disable_cursor()
 	outb(0x3d5, 0x20);
 }
 
+void terminal_set_colour(uint8_t col)
+{
+	terminal_color = col;
+}
+
 void terminal_scroll_up() {
 	uint32_t* wp = (uint32_t*)(VGA_BASE);
 	const uint32_t * rp = (const uint32_t*)(VGA_BASE + VGA_PITCH);
