@@ -39,10 +39,18 @@ static void idt_set_gate(uint8_t i, uint16_t sel, uint32_t offset, idt_type_attr
     //printf("idt_set_gate for %x", i);
 }
 
+//TODO: move this somewhere else, make isr.c or something
 void isr3_handler(isr_stack_t stack)
 {
     JOS_BOCHS_DBGBREAK();
     printf("isr3_handler, error code is %x\n", stack.error_code);
+}
+
+void init_isrs()
+{
+    idt_set_gate(0,0x08,0,&(idt_type_attr_t){.gate_type = 1, .storage_segment = 0, .dpl = 3, .present = 1},isr3_handler);
+    idt_set_gate(0,0x08,0,&(idt_type_attr_t){.gate_type = 1, .storage_segment = 0, .dpl = 3, .present = 1},isr3_handler);
+    idt_set_gate(0,0x08,0,&(idt_type_attr_t){.gate_type = 1, .storage_segment = 0, .dpl = 3, .present = 1},isr3_handler);
 }
 
 void kernel_panic()
@@ -58,11 +66,10 @@ void _kinit(void *mboot)
     terminal_initialize();
     terminal_disable_cursor();
     printf("_kinit(0x%x), %s\n", (int)mboot, is_protected_mode() ? "protected mode":"real mode");    
-    idt_set_gate(0,0x08,0,&(idt_type_attr_t){.gate_type = 1, .storage_segment = 0, .dpl = 3, .present = 1},isr3_handler);
 
     void* allocated = kalloc(1024, kNone);
     memset(allocated, 0xdd, 1024);
-    printf(" allocated and cleared memory at 0x%x\n", (int)allocated - 0x10000);
+    printf(" allocated and cleared memory at 0x%x\n", (int)allocated);
 }
 
 void _kmain()
