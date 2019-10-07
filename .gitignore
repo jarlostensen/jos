@@ -46,6 +46,7 @@
 *.til
 *.nam
 *.kernel
+*.vscode
 
 # Kernel Module Compile Results
 *.mod*
