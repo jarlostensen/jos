@@ -17,25 +17,27 @@ k_load_idt:
 ; trampoline to our per interrrupt handlers registered by the kernel
 isr_handler_stub:
     
+    ;  eax, ecx, edx, ebx, original esp, ebp, esi, and edi
     pushad    
 
     ; save caller's data segment (could be kernel, could be user)
     mov ax, ds
     push eax
-    ;TODO: swap to kernel data segments + stack
+    
+    ;TODO: swap to kernel data segments + stack    
     call _isr_handler
     
     pop eax
-
     popad
-    ; from handler entry point 
+
+    ; from handler entry point (isr id)
     add esp,+4
     iret
 
 ; the frame/stub for an isr. 
 %macro ISR_HANDLER 1
-global isr%1:function
-isr%1:
+global _k_isr%1:function
+_k_isr%1:
     cli
     ; isr id
     push %1
