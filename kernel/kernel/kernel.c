@@ -32,12 +32,21 @@ void k_panic()
     halt_cpu();
 }
 
+static void isr_3_handler(void)
+{
+    JOS_BOCHS_DBGBREAK();
+}
+
 void _kinit(void *mboot)
 {     
     kalloc_init();
+    k_init_isrs();
+
     terminal_initialize();
     terminal_disable_cursor();
     printf("_kinit(0x%x), %s\n", (int)mboot, is_protected_mode() ? "protected mode":"real mode");    
+
+    k_set_isr_handler(3, isr_3_handler);
 
     void* allocated = kalloc(1024, kNone);
     memset(allocated, 0xdd, 1024);
@@ -48,5 +57,9 @@ void _kmain()
 {
     k_init_isrs();
     printf("_kmain %s\n", is_protected_mode() ? "protected mode":"real mode");    
+
+    JOS_BOCHS_DBGBREAK();
+    asm("int $3");
+
     k_panic();
 }

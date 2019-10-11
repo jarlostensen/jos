@@ -39,6 +39,7 @@ isr_handler_stub:
 global _k_isr%1:function
 _k_isr%1:
     cli
+    xchg bx,bx
     ; isr id
     push %1
     jmp isr_handler_stub

@@ -62,7 +62,6 @@ struct isr_stack_struct
 };
 typedef struct isr_stack_struct isr_stack_t;
 
-typedef void (*isr_handler_func_t)(void);
 
 // in arch/i386/interrupts.asm
 extern void k_load_idt(void);
@@ -79,7 +78,13 @@ static void idt_set_gate(uint8_t i, uint16_t sel, uint32_t offset, idt_type_attr
     entry->selector = sel;
     entry->type_attr.fields = *type_attr;
     _isr_handlers[i] = handler;
-    //printf("idt_set_gate for %x", i);
+}
+
+isr_handler_func_t k_set_isr_handler(int i, isr_handler_func_t handler)
+{
+    isr_handler_func_t prev = _isr_handlers[i];
+    _isr_handlers[i] = handler;
+    return prev;
 }
 
 void _isr_handler(isr_stack_t isr_stack)
