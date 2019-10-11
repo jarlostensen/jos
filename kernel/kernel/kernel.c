@@ -25,7 +25,7 @@ gdt_entry_t _gdt[5] = {
 };
 gdt32_descriptor_t _gdt_desc = {.size = sizeof(_gdt), .address = (uint32_t)(_gdt)};
 
-void kernel_panic()
+void k_panic()
 {
     terminal_set_colour(vga_entry_color(VGA_COLOR_WHITE,VGA_COLOR_LIGHT_BLUE));
     terminal_writestring("KERNEL PANIC!");
@@ -48,5 +48,5 @@ void _kmain()
 {
     k_init_isrs();
     printf("_kmain %s\n", is_protected_mode() ? "protected mode":"real mode");    
-    kernel_panic();
+    k_panic();
 }
