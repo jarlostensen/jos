@@ -11,8 +11,13 @@ Built on knowledge from:
 ## Dependencies/Tools used
 
 * GCC cross compiler
-* NASM
-* Bochs emulator
-* make
+* make and build scripts, libc framework from https://wiki.osdev.org/Meaty_Skeleton
+* NASM (because I just can't stomach AT&T syntax)
+* Bochs debugger http://bochs.sourceforge.net/doc/docbook/user/internal-debugger.html 
 * VSCode
-* Patience...
+* WSL
+
+## Setup
+My dev environment is Windows 10 so I have Ubuntu runing in WSL where the build environment (and GCC cross compiler) live.
+I write code using VSCode in Windows, having a working directory mounted in WSL using standard ```ln```. 
+I am using the windows version of Bochs, but so far only the non-GUI version, and run it from a command prompt.
