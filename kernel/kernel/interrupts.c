@@ -134,11 +134,11 @@ void _isr_handler(isr_stack_t isr_stack)
 {
     if(_isr_handlers[isr_stack.handler_id])
     {
-        _isr_handlers[isr_stack.handler_id]();
+        _isr_handlers[isr_stack.handler_id](isr_stack.cs, isr_stack.eip);
         return;
     }
     // no handler
-    printf("_isr_handler: unhandled interrupt 0x%x\n", isr_stack.handler_id);
+    printf("_isr_handler: unhandled interrupt 0x%x, next instruction @ 0x%x : 0x%x\n", isr_stack.handler_id, isr_stack.cs, isr_stack.eip);
 }
 
 void k_init_isrs()

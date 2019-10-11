@@ -32,7 +32,7 @@ void k_panic()
     _k_halt_cpu();
 }
 
-static void isr_3_handler(void)
+static void isr_3_handler(uint16_t cs, uint32_t eip)
 {
     printf("\tint 3 handler!\n");
 }

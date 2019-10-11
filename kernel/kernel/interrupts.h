@@ -4,7 +4,7 @@
 void k_init_isrs();
 void k_load_isrs();
 
-typedef void (*isr_handler_func_t)(void);
+typedef void (*isr_handler_func_t)(uint16_t caller_cs, uint32_t caller_eip);
 isr_handler_func_t k_set_isr_handler(int i, isr_handler_func_t handler);
 
 #endif
