@@ -7,8 +7,10 @@
 static bool print(const char* data, size_t length) {
 	const unsigned char* bytes = (const unsigned char*) data;
 	for (size_t i = 0; i < length; i++)
+	{
 		if (putchar(bytes[i]) == EOF)
 			return false;
+	}
 	return true;
 }
 
@@ -44,6 +46,12 @@ static int printdecimal(long d)
 		++written;
         // modulo
         d = d - (dd * pow_10);
+		if(d < pow_10 && d > 9)
+        {
+            putchar((int)'0');
+            pow_10 /= 10;
+            ++written;
+        }
         if (!d)
             break;
         dd = d;
@@ -81,7 +89,7 @@ static int printhex(long d)
     }
     if (d <= 256)
     {
-        if(d > 16)
+        if(d > 15)
             putchar((int)kHexDigits[(d&0xf0)>>4]);
         putchar((int)kHexDigits[(d & 0xf)]);
         return 1;

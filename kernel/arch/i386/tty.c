@@ -37,8 +37,8 @@ void terminal_initialize(void) {
 void terminal_disable_cursor()
 {
 	// https://wiki.osdev.org/VGA_Hardware#Port_0x3C4.2C_0x3CE.2C_0x3D4
-	outb(0x3d4, 0x0a);
-	outb(0x3d5, 0x20);
+	k_outb(0x3d4, 0x0a);
+	k_outb(0x3d5, 0x20);
 }
 
 void terminal_set_colour(uint8_t col)

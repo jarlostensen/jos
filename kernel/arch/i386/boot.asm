@@ -33,8 +33,8 @@ section .rodata
 section .text
 
 ; C-code kernel init and main, called with one parameter pointing to multiboot structure
-extern _kinit
-extern _kmain
+extern _k_init
+extern _k_main
 
 global _start:function (_start.end - _start)
 _start:
@@ -43,7 +43,7 @@ _start:
 
         cld
         push ebx
-        call _kinit
+        call _k_init
         add esp, 4 
 
         ; switch GDT
@@ -66,8 +66,7 @@ _start:
         nop
         nop    
     .protected_mode:
-        ;ZZZ: sti    
-        call _kmain
+        call _k_main
 
 .fi:
         cli

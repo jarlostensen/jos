@@ -9,8 +9,8 @@ section .rodata
 section .text
 
 ; returns 1 if protected mode enabled (PE bit in CR0)
-global is_protected_mode:function
-is_protected_mode:
+global k_is_protected_mode:function
+k_is_protected_mode:
     mov eax, cr0
     and eax, 1    
     ret
@@ -18,8 +18,8 @@ is_protected_mode:
 ; outb(port, byte)
 ; port = [esp+4]
 ; byte = [esp+8]
-global outb:function
-outb:
+global k_outb:function
+k_outb:
     mov dx, [esp+4]
     mov al, [esp+8]
     out dx,al
@@ -28,8 +28,8 @@ outb:
 ; outw(port, word)
 ; port = [esp+4]
 ; word = [esp+8]
-global outw:function
-outw:
+global k_outw:function
+k_outw:
     mov dx, [esp+4]
     mov ax, [esp+8]
     out dx,ax
@@ -37,33 +37,33 @@ outw:
 
 ; inb(port) -> byte
 ; port = [esp+4]
-global inb:function
-inb:
+global k_inb:function
+k_inb:
     mov dx, [esp+4]
     in al,dx
     ret
 
 ; inw(port) -> word
 ; port = [esp+4]
-global inw:function
-inw:
+global k_inw:function
+k_inw:
     mov dx, [esp+4]
     in ax, dx
     ret
 
-global enable_interrupts:function
-enable_interrupts:
+global _k_enable_interrupts:function
+_k_enable_interrupts:
     sti 
     ret
 
-global disable_interrupts:function
-disable_interrupts:
+global _k_disable_interrupts:function
+_k_disable_interrupts:
     cli
     ret
 
 ; hard stop, used by kernel_panic
-global halt_cpu:function
-halt_cpu:
+global _k_halt_cpu:function
+_k_halt_cpu:
     cli
 .halt_cpu:
     hlt 

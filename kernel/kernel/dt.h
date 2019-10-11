@@ -67,48 +67,6 @@ struct gdt32_descriptor_struct
 } __attribute__((packed));
 typedef struct gdt32_descriptor_struct gdt32_descriptor_t;
 
-// ==============================================================================
-// IDT
-// https://wiki.osdev.org/Interrupt_Descriptor_Table
-
-struct idt_type_attr_struct
-{
-    /* 
-    only care about either of these:
-    0x5 : 80386 32 bit task gate
-    0xe : 80386 32-bit interrupt gate
-    0xf : 80386 32-bit trap gate
-    */
-    uint8_t gate_type : 4;
-    // 0 for interrupt and trap gates
-    uint8_t storage_segment : 1;
-    // Descriptor Privilege Level
-    uint8_t dpl : 2;
-    // 0 for unused interrupts
-    uint8_t present:1;
-};
-typedef struct idt_type_attr_struct idt_type_attr_t;
-
-struct idt_entry_struct
-{
-    uint16_t offset_low;
-    uint16_t selector;
-    uint8_t zero;
-    union 
-    {
-        uint8_t byte;
-        idt_type_attr_t fields;
-    } type_attr;
-    uint16_t offset_high;
-} __attribute((packed));
-typedef struct idt_entry_struct idt_entry_t;
-
-struct idt32_descriptor_struct 
-{
-    uint16_t size;
-    uint32_t address;
-} __attribute((packed));
-typedef struct idt32_descriptor_struct idt32_descriptor_t;
 
 #define K_CODE_SELECTOR     0x08
 #define K_DATA_SELECTOR     0x10

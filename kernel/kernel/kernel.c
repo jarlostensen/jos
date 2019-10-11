@@ -28,38 +28,32 @@ gdt32_descriptor_t _gdt_desc = {.size = sizeof(_gdt), .address = (uint32_t)(_gdt
 void k_panic()
 {
     terminal_set_colour(vga_entry_color(VGA_COLOR_WHITE,VGA_COLOR_LIGHT_BLUE));
-    terminal_writestring("KERNEL PANIC!");
-    halt_cpu();
+    printf("\nKERNEL PANIC!");
+    _k_halt_cpu();
 }
 
 static void isr_3_handler(void)
 {
-    JOS_BOCHS_DBGBREAK();
+    printf("\tint 3 handler!\n");
 }
 
-void _kinit(void *mboot)
-{     
-    kalloc_init();
-    k_init_isrs();
-
+void _k_init(void *mboot)
+{       
     terminal_initialize();
-    terminal_disable_cursor();
-    printf("_kinit(0x%x), %s\n", (int)mboot, is_protected_mode() ? "protected mode":"real mode");    
-
-    k_set_isr_handler(3, isr_3_handler);
-
-    void* allocated = kalloc(1024, kNone);
-    memset(allocated, 0xdd, 1024);
-    printf(" allocated and cleared memory at 0x%x\n", (int)allocated);
+    terminal_disable_cursor();    
+    _k_alloc_init();
+    printf("_k_init, loading at 0x%x\n", mboot);
 }
 
-void _kmain()
-{
-    k_init_isrs();
-    printf("_kmain %s\n", is_protected_mode() ? "protected mode":"real mode");    
+void _k_main()
+{    
+    printf("\n_kmain %s\n", k_is_protected_mode() ? "protected mode":"real mode");    
 
-    JOS_BOCHS_DBGBREAK();
+    k_init_isrs();    
+    k_set_isr_handler(3, isr_3_handler);
+    k_load_isrs();
+    _k_enable_interrupts();
     asm("int $3");
-
+    
     k_panic();
 }

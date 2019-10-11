@@ -5,9 +5,9 @@
 #include <stddef.h>
 
 
-extern void enable_interrupts();
-extern void disable_interrupts();
-extern void halt_cpu();
+void _k_enable_interrupts();
+void _k_disable_interrupts();
+void _k_halt_cpu();
 
 typedef enum alignment_enum
 {
@@ -20,9 +20,7 @@ typedef enum alignment_enum
     k512 = 64,
     k4k = 0x1000,
 } alignment_t;
-void* kalloc(size_t bytes, alignment_t alignment);
-void kalloc_init();
-
-void k_panic();
+void* _k_alloc(size_t bytes, alignment_t alignment);
+void _k_alloc_init();
 
 #endif // JOS_KERNEL_DETAIL_H

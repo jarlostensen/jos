@@ -4,14 +4,19 @@ section .text
 
 ; handler; forwards call to the registered handler via argument 0
 extern _isr_handler
-; the idt itself
-extern _idt
+; the idt descriptor
+extern _idt_desc
 
 ; load the _idt table 
-global k_load_idt:function
-k_load_idt:
-    mov eax, dword _idt
+global _k_load_idt:function
+_k_load_idt:
+    mov eax, dword _idt_desc
     lidt [eax]
+    ret
+
+global _k_store_idt:function
+_k_store_idt:
+    sidt [esp+4]
     ret
 
 ; trampoline to our per interrrupt handlers registered by the kernel
@@ -39,7 +44,6 @@ isr_handler_stub:
 global _k_isr%1:function
 _k_isr%1:
     cli
-    xchg bx,bx
     ; isr id
     push %1
     jmp isr_handler_stub

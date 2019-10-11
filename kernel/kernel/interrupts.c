@@ -7,6 +7,48 @@
 #include <string.h>
 
 
+// ==============================================================================
+// IDT
+// https://wiki.osdev.org/Interrupt_Descriptor_Table
+
+struct idt_type_attr_struct
+{
+    /* 
+    only care about either of these:
+    0x5 : 80386 32 bit task gate
+    0xe : 80386 32-bit interrupt gate
+    0xf : 80386 32-bit trap gate
+    */
+    uint8_t gate_type : 4;
+    // 0 for interrupt and trap gates
+    uint8_t storage_segment : 1;
+    // Descriptor Privilege Level
+    uint8_t dpl : 2;
+    // 0 for unused interrupts
+    uint8_t present:1;
+};
+typedef struct idt_type_attr_struct idt_type_attr_t;
+
+struct idt_entry_struct
+{
+    uint16_t offset_low;
+    uint16_t selector;
+    uint8_t zero;
+    union 
+    {
+        uint8_t byte;
+        idt_type_attr_t fields;
+    } type_attr;
+    uint16_t offset_high;
+} __attribute((packed));
+typedef struct idt_entry_struct idt_entry_t;
+
+struct idt32_descriptor_struct 
+{
+    uint16_t size;
+    uint32_t address;
+} __attribute((packed));
+typedef struct idt32_descriptor_struct idt32_descriptor_t;
 
 // interrupt service routines
 extern void _k_isr0();
@@ -64,47 +106,49 @@ typedef struct isr_stack_struct isr_stack_t;
 
 
 // in arch/i386/interrupts.asm
-extern void k_load_idt(void);
+extern void _k_load_idt(void);
+extern void _k_store_idt(idt32_descriptor_t* desc);
 
 idt_entry_t _idt[256];
-idt32_descriptor_t _idt_desc = {.size = sizeof(_idt), .address = (uint32_t)(_idt)};
+idt32_descriptor_t _idt_desc = {.size = sizeof(_idt), .address = (uint32_t)(&_idt)};
 isr_handler_func_t _isr_handlers[256];
 
-static void idt_set_gate(uint8_t i, uint16_t sel, uint32_t offset, idt_type_attr_t* type_attr, isr_handler_func_t handler)
+static void idt_set_gate(uint8_t i, uint16_t sel, uint32_t offset, idt_type_attr_t* type_attr)
 {
     idt_entry_t* entry = _idt + i;
-    entry->offset_high = (offset >> 16) & 0xffff;
+    entry->offset_high = (uint16_t)((offset >> 16) & 0x0000ffff);
     entry->offset_low = offset & 0xffff;
     entry->selector = sel;
     entry->type_attr.fields = *type_attr;
-    _isr_handlers[i] = handler;
 }
 
 isr_handler_func_t k_set_isr_handler(int i, isr_handler_func_t handler)
 {
-    isr_handler_func_t prev = _isr_handlers[i];
+    isr_handler_func_t prev = _isr_handlers[i];    
     _isr_handlers[i] = handler;
+    printf("k_set_isr_handler 0x%x, prev = 0x%x, new = 0x%x\n", i, prev, handler);
     return prev;
 }
 
 void _isr_handler(isr_stack_t isr_stack)
 {
-    JOS_BOCHS_DBGBREAK();    
     if(_isr_handlers[isr_stack.handler_id])
     {
         _isr_handlers[isr_stack.handler_id]();
+        return;
     }
     // no handler
-    k_panic();
+    printf("_isr_handler: unhandled interrupt 0x%x\n", isr_stack.handler_id);
 }
 
 void k_init_isrs()
 {
     memset(_idt, 0, sizeof(_idt));
     memset(_isr_handlers, 0, sizeof(_isr_handlers));
+    printf("k_init_irs: _idt_desc.size = %d, _idt_desc.address = 0x%x\n", (int)_idt_desc.size, _idt_desc.address);
 
 #define K_ISR_SET(i)\
-    idt_set_gate(i,K_CODE_SELECTOR,0,&(idt_type_attr_t){.gate_type = 0xe, .dpl = 3, .present = 1}, _k_isr##i)
+    idt_set_gate(i,K_CODE_SELECTOR,(uint32_t)_k_isr##i,&(idt_type_attr_t){.gate_type = 0xe, .dpl = 0, .present = 1})
 
     K_ISR_SET(0);
     K_ISR_SET(1);
@@ -138,7 +182,11 @@ void k_init_isrs()
     K_ISR_SET(29);
     K_ISR_SET(30);
     K_ISR_SET(31);
+}
 
+void k_load_isrs()
+{
+    //TODO: some error checking?
     // make it so!
-    k_load_idt();
+    _k_load_idt(); 
 }
