@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-
 void _k_enable_interrupts();
 void _k_disable_interrupts();
 void _k_halt_cpu();

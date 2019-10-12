@@ -34,7 +34,7 @@ void k_panic()
 
 static void isr_3_handler(uint16_t cs, uint32_t eip)
 {
-    printf("\tint 3 handler!\n");
+    printf("\tint 3 handler: next instruction is at 0x%x:0x%x\n",cs,eip);
 }
 
 void _k_init(void *mboot)
@@ -49,9 +49,9 @@ void _k_main()
 {    
     printf("\n_kmain %s\n", k_is_protected_mode() ? "protected mode":"real mode");    
 
-    k_init_isrs();    
+    _k_init_isrs();    
     k_set_isr_handler(3, isr_3_handler);
-    k_load_isrs();
+    _k_load_isrs();
     _k_enable_interrupts();
     asm("int $3");
     

@@ -51,6 +51,13 @@ k_inw:
     in ax, dx
     ret
 
+; issue a NOP write to port 0x80 (POST status) to idle for a few cycles
+global k_io_wait:function
+k_io_wait:
+    ; doesn't matter what al contains
+    out 0x80, al
+    ret
+
 global _k_enable_interrupts:function
 _k_enable_interrupts:
     sti 

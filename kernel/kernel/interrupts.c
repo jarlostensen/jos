@@ -6,11 +6,30 @@
 #include <stdio.h>
 #include <string.h>
 
+// ==============================================================================
+// PIC
+// https://wiki.osdev.org/PIC
+#define PIC1		0x20        // master PIC
+#define PIC2		0xA0		// slave PIC
+#define PIC1_COMMAND	PIC1
+#define PIC1_DATA	(PIC1+1)
+#define PIC2_COMMAND	PIC2
+#define PIC2_DATA	(PIC2+1)
+#define ICW1_ICW4	0x01		/* ICW4 (not) needed */
+#define ICW1_SINGLE	0x02		/* Single (cascade) mode */
+#define ICW1_INTERVAL4	0x04	/* Call address interval 4 (8) */
+#define ICW1_LEVEL	0x08		/* Level triggered (edge) mode */
+#define ICW1_INIT	0x10		/* Initialization - required! */
+#define ICW4_8086	0x01		/* 8086/88 (MCS-80/85) mode */
+#define ICW4_AUTO	0x02		/* Auto (normal) EOI */
+#define ICW4_BUF_SLAVE	0x08	/* Buffered mode/slave */
+#define ICW4_BUF_MASTER	0x0C	/* Buffered mode/master */
+#define ICW4_SFNM	0x10		/* Special fully nested (not) */
+#define IRQ_BASE_OFFSET 0x20    // the offset we apply to the IRQs to map them outside of the lower reserved ISR range
 
 // ==============================================================================
 // IDT
 // https://wiki.osdev.org/Interrupt_Descriptor_Table
-
 struct idt_type_attr_struct
 {
     /* 
@@ -50,7 +69,7 @@ struct idt32_descriptor_struct
 } __attribute((packed));
 typedef struct idt32_descriptor_struct idt32_descriptor_t;
 
-// interrupt service routines
+// ISR stub handlers (interrupts.asm)
 extern void _k_isr0();
 extern void _k_isr1();
 extern void _k_isr2();
@@ -85,6 +104,25 @@ extern void _k_isr30();
 extern void _k_isr31();
 extern void _k_isr32();
 
+// IRQ stub handlers (interrupts.asm)
+extern void _k_irq0();
+extern void _k_irq1();
+extern void _k_irq2();
+extern void _k_irq3();
+extern void _k_irq4();
+extern void _k_irq5();
+extern void _k_irq6();
+extern void _k_irq7();
+extern void _k_irq8();
+extern void _k_irq9();
+extern void _k_irq10();
+extern void _k_irq11();
+extern void _k_irq12();
+extern void _k_irq13();
+extern void _k_irq14();
+extern void _k_irq15();
+extern void _k_irq16();
+
 // ia-32 dev manual 6-12
 struct isr_stack_struct
 {    
@@ -109,9 +147,31 @@ typedef struct isr_stack_struct isr_stack_t;
 extern void _k_load_idt(void);
 extern void _k_store_idt(idt32_descriptor_t* desc);
 
-idt_entry_t _idt[256];
+static idt_entry_t _idt[256];
 idt32_descriptor_t _idt_desc = {.size = sizeof(_idt), .address = (uint32_t)(&_idt)};
-isr_handler_func_t _isr_handlers[256];
+static isr_handler_func_t _isr_handlers[256];
+static irq_handler_func_t _irq_handlers[32];
+
+void _k_isr_handler(isr_stack_t isr_stack)
+{
+    if(_isr_handlers[isr_stack.handler_id])
+    {
+        _isr_handlers[isr_stack.handler_id](isr_stack.cs, isr_stack.eip);
+        return;
+    }
+    // no handler
+    printf("_isr_handler: unhandled interrupt 0x%x, next instruction @ 0x%x : 0x%x\n", isr_stack.handler_id, isr_stack.cs, isr_stack.eip);
+}
+
+void _k_irq_handler(int irq_num)
+{
+    if( _irq_handlers[irq_num] )
+    {
+        _irq_handlers[irq_num](irq_num+IRQ_BASE_OFFSET);
+    }
+    printf("_k_irq_handler: unhandled IRQ 0x%x\n", irq_num);
+    //NOTE: see interrupts.asm IRQ stub for intro-extro code (including interrupt ack to PIC)
+}
 
 static void idt_set_gate(uint8_t i, uint16_t sel, uint32_t offset, idt_type_attr_t* type_attr)
 {
@@ -130,23 +190,55 @@ isr_handler_func_t k_set_isr_handler(int i, isr_handler_func_t handler)
     return prev;
 }
 
-void _isr_handler(isr_stack_t isr_stack)
+void k_set_irq_handler(int i, irq_handler_func_t handler)
 {
-    if(_isr_handlers[isr_stack.handler_id])
+    //TODO: assert if handler already set, don't allow overwrites
+    //TODO: assert if i not in range 0..31
+
+    _irq_handlers[i] = handler;
+    if(i < 8)
     {
-        _isr_handlers[isr_stack.handler_id](isr_stack.cs, isr_stack.eip);
-        return;
+        // unmask IRQ in PIC1
+	    k_outb(PIC1_DATA, k_inb(PIC1_DATA) & ~(1<<i));
     }
-    // no handler
-    printf("_isr_handler: unhandled interrupt 0x%x, next instruction @ 0x%x : 0x%x\n", isr_stack.handler_id, isr_stack.cs, isr_stack.eip);
+    else
+    {
+        // unmask IRQ in PIC2
+	    k_outb(PIC2_DATA, k_inb(PIC2_DATA) & ~(1<<(i-8)));
+    } 
 }
 
-void k_init_isrs()
+void _k_init_isrs()
 {
     memset(_idt, 0, sizeof(_idt));
     memset(_isr_handlers, 0, sizeof(_isr_handlers));
+    memset(_irq_handlers, 0, sizeof(_irq_handlers));
     printf("k_init_irs: _idt_desc.size = %d, _idt_desc.address = 0x%x\n", (int)_idt_desc.size, _idt_desc.address);
 
+    printf("initialising PIC1 and PIC2...");    
+    // http://www.brokenthorn.com/Resources/OSDevPic.html
+    // start initialising PIC1 and PIC2 
+    k_outb(PIC1_COMMAND , ICW1_INIT | ICW1_ICW4);
+	k_outb(PIC2_COMMAND , ICW1_INIT | ICW1_ICW4);
+    // remap IRQs offsets to 0x20 and 0x28
+	k_outb(PIC1_DATA , IRQ_BASE_OFFSET);
+	k_outb(PIC2_DATA , IRQ_BASE_OFFSET+8);
+    k_io_wait();
+	// cascade PIC1 & PIC2
+	k_outb(PIC1_DATA , 0x00);  
+	k_outb(PIC2_DATA , 0x00);  
+    k_io_wait();
+	// enable x86 mode
+	k_outb(PIC1_DATA , 0x01);
+	k_outb(PIC2_DATA , 0x01);	
+    k_io_wait();    
+	// disable all IRQs for now, only enable when someone registers an IRQ handler.
+	k_outb(PIC1_DATA, 0xff);
+	k_outb(PIC2_DATA, 0xff);
+    k_io_wait();    
+    printf("ok\n");
+
+    printf("initialising isr and irq handler tables...");
 #define K_ISR_SET(i)\
     idt_set_gate(i,K_CODE_SELECTOR,(uint32_t)_k_isr##i,&(idt_type_attr_t){.gate_type = 0xe, .dpl = 0, .present = 1})
 
@@ -182,11 +274,35 @@ void k_init_isrs()
     K_ISR_SET(29);
     K_ISR_SET(30);
     K_ISR_SET(31);
+
+#define K_IRQ_SET(i)\
+    idt_set_gate(IRQ_BASE_OFFSET+i,K_CODE_SELECTOR,(uint32_t)_k_irq##i,&(idt_type_attr_t){.gate_type = 0xe, .dpl = 0, .present = 1})
+
+    K_IRQ_SET(0);
+    K_IRQ_SET(1);
+    K_IRQ_SET(2);
+    K_IRQ_SET(3);
+    K_IRQ_SET(4);
+    K_IRQ_SET(5);
+    K_IRQ_SET(6);
+    K_IRQ_SET(7);
+    K_IRQ_SET(8);
+    K_IRQ_SET(9);
+    K_IRQ_SET(10);
+    K_IRQ_SET(11);
+    K_IRQ_SET(12);
+    K_IRQ_SET(13);
+    K_IRQ_SET(14);
+    K_IRQ_SET(15);
+
+    printf("ok\n");
 }
 
-void k_load_isrs()
+void _k_load_isrs()
 {
+    printf("loading IDT...");
     //TODO: some error checking?
     // make it so!
     _k_load_idt(); 
+    printf("ok\n");
 }
