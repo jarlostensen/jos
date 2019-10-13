@@ -133,8 +133,9 @@ struct isr_stack_struct
     
     // pushed by CPU
     uint32_t    error_code;
-    uint32_t    eip;
+    //TODO: check the order here, something isn't right
     uint32_t    cs;
+    uint32_t    eip;    
     uint32_t    eflags;
     // iff privilege level switch
     uint32_t    _esp;
@@ -165,12 +166,13 @@ void _k_isr_handler(isr_stack_t isr_stack)
 
 void _k_irq_handler(int irq_num)
 {
+    //NOTE: see interrupts.asm IRQ stub for intro-extro code (including interrupt ack to PIC)
     if( _irq_handlers[irq_num] )
     {
         _irq_handlers[irq_num](irq_num+IRQ_BASE_OFFSET);
+        return;
     }
-    printf("_k_irq_handler: unhandled IRQ 0x%x\n", irq_num);
-    //NOTE: see interrupts.asm IRQ stub for intro-extro code (including interrupt ack to PIC)
+    printf("_k_irq_handler: unhandled IRQ 0x%x\n", irq_num);    
 }
 
 static void idt_set_gate(uint8_t i, uint16_t sel, uint32_t offset, idt_type_attr_t* type_attr)
@@ -195,7 +197,12 @@ void k_set_irq_handler(int i, irq_handler_func_t handler)
     //TODO: assert if handler already set, don't allow overwrites
     //TODO: assert if i not in range 0..31
 
-    _irq_handlers[i] = handler;
+    printf("k_set_irq_handler 0x%x, 0x%x\n", i, handler);
+    _irq_handlers[i] = handler;    
+}
+
+void k_enable_irq(int i)
+{
     if(i < 8)
     {
         // unmask IRQ in PIC1
@@ -205,6 +212,32 @@ void k_set_irq_handler(int i, irq_handler_func_t handler)
     {
         // unmask IRQ in PIC2
 	    k_outb(PIC2_DATA, k_inb(PIC2_DATA) & ~(1<<(i-8)));
+    } 
+}
+
+void k_disable_irq(int i)
+{
+    if(i < 8)
+    {
+        // mask IRQ in PIC1
+	    k_outb(PIC1_DATA, k_inb(PIC1_DATA) | (1<<i));
+    }
+    else
+    {
+        // nmask IRQ in PIC2
+	    k_outb(PIC2_DATA, k_inb(PIC2_DATA) | (1<<(i-8)));
+    } 
+}
+
+bool k_irq_enabled(int i)
+{
+    if(i < 8)
+    {
+        return (k_inb(PIC1_DATA) & (1<<i)) == 0;
+    }
+    else
+    {
+        return (k_inb(PIC2_DATA) & (1<<(i-8))) == 0;
     } 
 }
 

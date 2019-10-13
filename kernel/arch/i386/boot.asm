@@ -14,8 +14,13 @@ align 4
     dd MBMAGIC
     dd MBFLAGS
     dd MBCHECKSUM
-
     dd _mboot
+._mboot_text:
+    dd 0
+._mboot_data:
+    dd 0 
+._mboot_bss:
+    dd 0
 
 # kernel startup stack
 section .bss

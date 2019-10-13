@@ -32,6 +32,7 @@ $(KERNEL_ARCH_OBJS) \
 kernel/kernel.o \
 kernel/kalloc.o \
 kernel/interrupts.o \
+kernel/clock.o \
 
 OBJS=\
 $(ARCHDIR)/crti.o \

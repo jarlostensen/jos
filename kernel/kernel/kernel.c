@@ -8,6 +8,7 @@
 
 #include "../arch/i386/vga.h"
 #include "interrupts.h"
+#include "clock.h"
 
 // =======================================================
 
@@ -37,6 +38,11 @@ static void isr_3_handler(uint16_t cs, uint32_t eip)
     printf("\tint 3 handler: next instruction is at 0x%x:0x%x\n",cs,eip);
 }
 
+static void irq_1_handler(int irq)
+{
+    printf("\tIRQ %d handler, keyboard\n", irq);
+}
+
 void _k_init(void *mboot)
 {       
     terminal_initialize();
@@ -51,9 +57,22 @@ void _k_main()
 
     _k_init_isrs();    
     k_set_isr_handler(3, isr_3_handler);
+    k_set_irq_handler(1, irq_1_handler);
     _k_load_isrs();
+    k_enable_irq(1);
     _k_enable_interrupts();
+
+    k_init_clock();
+
+    if(k_irq_enabled(1))
+        printf("\tirq 1 is enabled\n");
+    asm("int $33");
     asm("int $3");
     
+    while(true)
+    {
+        
+    }
+
     k_panic();
 }

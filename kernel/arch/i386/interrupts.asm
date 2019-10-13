@@ -23,34 +23,40 @@ _k_store_idt:
 ; =====================================================================================
 ; IRQs
 
+PIC1_COMMAND equ 0x20
+PIC2_COMMAND equ 0x0a
+
 ; handler; forwards call to the registered handler via argument 0
 extern _k_irq_handler
 
 irq_handler_stub:
 
+    ; put another copy of the IRQ number on the stack for later
+    push dword [esp]
+    
     ; chain to handler, irq number is first arg
     call _k_irq_handler
-    
-    ; send EOI to the right PIC
-    
-    cmp [esp],dword 8
+    add esp, 4
+
+    ; send EOI to the right PIC    
+    pop eax
+    cmp al, 8
     jl .irq_handler_stub_1
     ; EOI to PIC2
     mov al, 0x20
-    out 0xa0, al
-    jmp .irq_handler_stub_2
+    out PIC2_COMMAND, al
+    ; always send EOI to master (PIC1)
 .irq_handler_stub_1:
     ; EOI to PIC1
     mov al, 0x20
-    out 0x20, al
+    out PIC1_COMMAND, al
 .irq_handler_stub_2:
-    add esp, 4
     iret
 
 %macro IRQ_HANDLER 1
 global _k_irq%1:function
-_k_irq%1:
-    push %1
+_k_irq%1:        
+    push dword %1
     jmp irq_handler_stub
 %endmacro
 
@@ -92,10 +98,8 @@ isr_handler_stub:
     
     ;TODO: swap to kernel data segments + stack    
     call _k_isr_handler
-    
     pop eax
     popad
-
     ; from handler entry point (isr id)
     add esp,+4
     iret
@@ -106,7 +110,7 @@ global _k_isr%1:function
 _k_isr%1:
     cli
     ; isr id
-    push %1
+    push dword %1
     jmp isr_handler_stub
 %endmacro
 
