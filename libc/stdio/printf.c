@@ -84,8 +84,7 @@ static int printhex(long d)
     if (d < 0)
     {
         d *= -1;
-        putchar((int)'-');
-        written = 1;
+		//don't write a sign         
     }
     if (d <= 256)
     {

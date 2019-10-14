@@ -75,3 +75,25 @@ _k_halt_cpu:
 .halt_cpu:
     hlt 
     jmp .halt_cpu
+
+; clock.c
+; running sum
+extern _k_clock_frac
+; clock frequency fraction
+extern _k_clock_freq_frac
+extern _k_ms_elapsed
+global _k_update_clock:function
+_k_update_clock: 
+    push eax
+    push ebx
+    mov ebx, [_k_clock_frac]
+    mov eax, [_k_ms_elapsed]
+    ; update fraction, CF=1 if we're rolling over
+    add ebx, [_k_clock_freq_frac]
+    ; update ms if fraction rolled over
+    adc eax, 0
+    mov [_k_clock_frac], ebx
+    mov [_k_ms_elapsed], eax
+    pop ebx
+    pop eax
+    ret
