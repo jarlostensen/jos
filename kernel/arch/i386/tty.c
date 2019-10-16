@@ -104,8 +104,10 @@ void terminal_putchar(char c) {
 	unsigned char uc = c;
 
 	if(uc == '\n' || uc == '\r') {
-		if( terminal_row == (VGA_HEIGHT-1))
+		if( terminal_row >= (VGA_HEIGHT-1))
+		{
 			terminal_scroll_up();
+		}
 		terminal_set_row(terminal_row+1);
 		terminal_set_column(0);
 		return;

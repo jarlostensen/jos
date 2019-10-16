@@ -65,7 +65,7 @@ void _k_main()
     
     uint32_t ms = k_get_ms_since_boot();
     printf("waiting for a second starting at %d...", ms);
-    while(ms<10000)
+    while(ms<1000)
     {
         ms = k_get_ms_since_boot();
     }

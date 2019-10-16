@@ -10,10 +10,16 @@
 #define CLOCK_COMMAND 0x43
 #define CLOCK_DATA 0x40
 
-#define HZ              2000
+#define HZ              1000
 #define CLOCK_FREQ      1193182
 #define ONE_FP32        0x100000000
 #define HALF_FP32       0x010000000
+
+// http://www.brokenthorn.com/Resources/OSDev16.html
+
+// PIT command word flags
+#define PIT_MODE_SQUAREWAVE     0x6     // binary, square wave
+#define PIT_RL_DATA             0x30    // LSB, then MSB
 
 uint32_t _k_clock_freq_frac = 0;
 volatile uint32_t _k_clock_frac = 0;
@@ -48,7 +54,7 @@ void k_init_clock()
     _k_update_clock();
     
     // initialise PIT
-    k_outb(CLOCK_COMMAND, 0x36);
+    k_outb(CLOCK_COMMAND, PIT_MODE_SQUAREWAVE | PIT_RL_DATA);
     // set frequency         
     k_outb(CLOCK_DATA, div16 & 0xff);
     k_outb(CLOCK_DATA, (div16>>8) & 0xff);

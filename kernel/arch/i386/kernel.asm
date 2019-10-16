@@ -4,9 +4,25 @@ section .bss
 section .data
 ; empty
 section .rodata
-; empty 
+; the real mode IDT is used to switch to real mode, whenever we need that
+real_mode_idt:
+    dw 3fffh
+    dd 0        ; real mode ivt
 
 section .text
+
+global k_bios_call:function
+; k_bios_call(int_num, ax, bx, cx, dx, si, di)
+k_bios_call:
+    push ebp
+    mov ebp, esp
+    pushad
+
+    ; TODO: https://wiki.osdev.org/Real_Mode
+
+    pop ebp
+    popad
+    ret
 
 ; returns 1 if protected mode enabled (PE bit in CR0)
 global k_is_protected_mode:function
@@ -76,6 +92,7 @@ _k_halt_cpu:
     hlt 
     jmp .halt_cpu
 
+; this is teh core clock IRQ update function, it counts milliseconds using 32.32 fixed point fractions
 ; clock.c
 ; running sum
 extern _k_clock_frac
@@ -97,3 +114,5 @@ _k_update_clock:
     pop ebx
     pop eax
     ret
+
+

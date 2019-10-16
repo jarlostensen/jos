@@ -188,7 +188,7 @@ isr_handler_func_t k_set_isr_handler(int i, isr_handler_func_t handler)
 {
     isr_handler_func_t prev = _isr_handlers[i];    
     _isr_handlers[i] = handler;
-    printf("k_set_isr_handler 0x%x, prev = 0x%x, new = 0x%x\n", i, prev, handler);
+    //DEBUG: printf("k_set_isr_handler 0x%x, prev = 0x%x, new = 0x%x\n", i, prev, handler);
     return prev;
 }
 
@@ -197,7 +197,7 @@ void k_set_irq_handler(int i, irq_handler_func_t handler)
     //TODO: assert if handler already set, don't allow overwrites
     //TODO: assert if i not in range 0..31
 
-    printf("k_set_irq_handler 0x%x, 0x%x\n", i, handler);
+    //DEBUG:printf("k_set_irq_handler 0x%x, 0x%x\n", i, handler);
     _irq_handlers[i] = handler;    
 }
 

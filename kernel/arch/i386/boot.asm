@@ -33,7 +33,7 @@ section .data
 extern _gdt_desc
 
 section .rodata
-; empty 
+
 
 section .text
 
