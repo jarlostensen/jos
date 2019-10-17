@@ -77,7 +77,7 @@ void k_init_clock()
     _k_clock_freq_frac = (uint32_t)(((ddiv * 1000.0)/(double)CLOCK_FREQ));
     _k_ms_elapsed = 0;
 
-    printf("k_init_clock: starting PIT with divider 0x%x, frac in 32.32fp is 0x%x...", (int)div16, _k_clock_freq_frac);
+    printf("k_init_clock: starting PIT with divider %d, frac in 32.32fp is %d...", (int)div16, _k_clock_freq_frac);
 
     // run once to initialise counters
     _k_update_clock();

@@ -76,7 +76,7 @@ void _k_main()
     uint32_t ms_start = k_get_ms_since_boot();
     k_wait_oneshot_one_period();
     ms = k_get_ms_since_boot();
-    printf("done, one 1/18 period took ~0x%x ms\n", ms-ms_start);
+    printf("done, one 1/18 period took ~%d ms\n", ms-ms_start);
 
     k_panic();
 }

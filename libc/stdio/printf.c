@@ -16,22 +16,16 @@ static bool print(const char* data, size_t length) {
 
 static int printdecimal(long d)
 {
-	int written = 0;	
+	int written = 0;
     if (d < 0)
     {
         putchar((int)'-');
         d *= -1;
-		++written;
+        ++written;
     }
-	if(d < 10)
-	{
-		putchar((int)'0'+(int)d);
-		return 1;
-	}
-
     // simple and dumb but it works...
-    long  pow_10 = 1;
-    long dd = d;
+    int pow_10 = 1;
+    int dd = d;
 
     // find highest power of 10 
     while (dd > 9)
@@ -41,40 +35,16 @@ static int printdecimal(long d)
     }
 
     // print digits from MSD to LSD
-    do {
-        putchar((int)'0' + (int)dd);
-		++written;
-        // modulo
+    while(true) {
+        putchar((int)'0' + dd);
+        ++written;
         d = d - (dd * pow_10);
-		if(d < pow_10 && d > 9)
-        {
-            putchar((int)'0');
-            pow_10 /= 10;
-            ++written;
-        }
-        if (!d)
-            break;
-        dd = d;
-        while (dd > 9)
-            dd /= 10;
         pow_10 /= 10;
-    } while (pow_10 > 1);
-    if(d)
-	{
-        putchar((int)'0' + (int)dd);
-		++written;
-	}
-    else
-	{
-        // trailing zeros
-        while (pow_10 > 1)
-        {
-            putchar((int)'0');
-            pow_10 /= 10;
-			++written;
-        }
-	}
-	return written;
+        if (!pow_10)
+            break;
+        dd = d / pow_10;
+    };
+    return written;
 }
 
 static int printhex(long d)
