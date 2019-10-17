@@ -4,16 +4,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
-void terminal_initialize(void);
-void terminal_set_colour(uint8_t col);
-void terminal_putchar(char c);
-void terminal_write(const char* data, size_t size);
-void terminal_writestring(const char* data);
-void terminal_scroll_up();
-void terminal_set_column(size_t x);
-void terminal_set_row(size_t y);
-size_t terminal_curr_column();
-size_t terminal_curr_row();
-void terminal_disable_cursor();
+void k_tty_initialize(void);
+void k_tty_set_colour(uint8_t col);
+void k_tty_putchar(char c);
+void k_tty_write(const char* data, size_t size);
+void k_tty_writestring(const char* data);
+void k_tty_scroll_up();
+void k_tty_set_column(size_t x);
+void k_tty_set_row(size_t y);
+size_t k_tty_curr_column();
+size_t k_tty_curr_row();
+void k_tty_disable_cursor();
 
 #endif

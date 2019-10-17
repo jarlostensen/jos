@@ -10,11 +10,11 @@ int putchar(int ic) {
 	if(c=='\t')
 	{
 		static const char kTabs[4] = {' ',' ', ' ', ' '};
-		terminal_write(kTabs,sizeof(kTabs));
+		k_tty_write(kTabs,sizeof(kTabs));
 	}
 	else
 	{
-		terminal_write(&c, sizeof(c));
+		k_tty_write(&c, sizeof(c));
 	}
 #else
 	// TODO: Implement stdio and the write system call.

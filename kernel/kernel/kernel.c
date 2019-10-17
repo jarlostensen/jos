@@ -28,7 +28,7 @@ gdt32_descriptor_t _gdt_desc = {.size = sizeof(_gdt), .address = (uint32_t)(_gdt
 
 void k_panic()
 {
-    terminal_set_colour(vga_entry_color(VGA_COLOR_WHITE,VGA_COLOR_LIGHT_BLUE));
+    k_tty_set_colour(vga_entry_color(VGA_COLOR_WHITE,VGA_COLOR_LIGHT_BLUE));
     printf("\nKERNEL PANIC!");
     _k_halt_cpu();
 }
@@ -45,8 +45,8 @@ static void irq_1_handler(int irq)
 
 void _k_init(void *mboot)
 {       
-    terminal_initialize();
-    terminal_disable_cursor();    
+    k_tty_initialize();
+    k_tty_disable_cursor();    
     _k_alloc_init();
     printf("_k_init, loading at 0x%x\n", mboot);
 }
