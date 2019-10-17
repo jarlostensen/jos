@@ -50,15 +50,20 @@ uint64_t k_get_ms_since_boot()
     return _k_ms_elapsed;
 }
 
-void k_wait_oneshot_one_second()
+void k_wait_oneshot_one_period()
 {
     k_outb(PIT_COMMAND, PIT_COUNTER_2 | PIT_MODE_ONESHOT);
     k_outb(PIT_DATA_2, 0xff);
     k_outb(PIT_DATA_2, 0xff);
 
+    //TODO: dig deeper, this disables the speaker, does that free up channel 2?
+    k_outb(0x61,(k_inb(0x61) & ~0x02) | 0x01);
+
     // dummy read, give time for the next edge rise
+    k_inb(PIT_DATA_2);
     char msb = k_inb(PIT_DATA_2);
     do {
+        k_inb(PIT_DATA_2);
         msb = k_inb(PIT_DATA_2);
     } while(msb);
 }

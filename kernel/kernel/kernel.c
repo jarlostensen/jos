@@ -70,6 +70,13 @@ void _k_main()
         ms = k_get_ms_since_boot();
     }
     printf("ok, we're at %d\n", ms);
+    
+    ms = k_get_ms_since_boot();
+    printf("waiting for one period starting at %d...", ms);
+    uint32_t ms_start = k_get_ms_since_boot();
+    k_wait_oneshot_one_period();
+    ms = k_get_ms_since_boot();
+    printf("done, one 1/18 period took ~0x%x ms\n", ms-ms_start);
 
     k_panic();
 }
