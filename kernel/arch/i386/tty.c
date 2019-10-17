@@ -59,7 +59,7 @@ void k_tty_scroll_up() {
 	// clear last line
 	wp = (uint32_t*)(VGA_MEMORY + VGA_WIDTH*(VGA_HEIGHT-1));
 	const uint16_t entry = vga_entry(' ', _colour) ;
-	for(size_t j = 0; j < VGA_WIDTH>>1; ++j) 
+	for(size_t j = 0; j < VGA_WIDTH>>2; ++j) 
 	{		
 		wp[j] = (entry | entry << 16);
 	}
