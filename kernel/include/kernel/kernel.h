@@ -7,6 +7,9 @@
 int k_is_protected_mode();
 void k_panic();
 
+// returns  EFLAGS 
+uint32_t k_eflags();
+
 void k_outb(uint16_t port, uint8_t value);
 void k_outw(uint16_t port, uint16_t value);
 uint8_t k_inb(uint16_t port);

@@ -9,6 +9,7 @@
 #include "../arch/i386/vga.h"
 #include "interrupts.h"
 #include "clock.h"
+#include "cpu.h"
 
 // =======================================================
 
@@ -48,6 +49,7 @@ void _k_init(void *mboot)
     k_tty_initialize();
     k_tty_disable_cursor();    
     _k_alloc_init();
+    k_init_cpu();
     printf("_k_init, loading at 0x%x\n", mboot);
 }
 
@@ -69,7 +71,7 @@ void _k_main()
     {
         ms = k_get_ms_since_boot();
     }
-    printf("ok, we're at %d\n", ms);
+    printf("ok, we're at %dms\n", ms);
     
     ms = k_get_ms_since_boot();
     printf("waiting for one period starting at %d...", ms);

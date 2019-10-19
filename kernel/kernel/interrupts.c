@@ -186,8 +186,10 @@ static void idt_set_gate(uint8_t i, uint16_t sel, uint32_t offset, idt_type_attr
 
 isr_handler_func_t k_set_isr_handler(int i, isr_handler_func_t handler)
 {
-    isr_handler_func_t prev = _isr_handlers[i];    
+    isr_handler_func_t prev = _isr_handlers[i];
+    _k_disable_interrupts();
     _isr_handlers[i] = handler;
+    _k_enable_interrupts();
     //DEBUG: printf("k_set_isr_handler 0x%x, prev = 0x%x, new = 0x%x\n", i, prev, handler);
     return prev;
 }
@@ -246,8 +248,6 @@ void _k_init_isrs()
     memset(_idt, 0, sizeof(_idt));
     memset(_isr_handlers, 0, sizeof(_isr_handlers));
     memset(_irq_handlers, 0, sizeof(_irq_handlers));
-    printf("k_init_irs: _idt_desc.size = %d, _idt_desc.address = 0x%x\n", (int)_idt_desc.size, _idt_desc.address);
-
     printf("initialising PIC1 and PIC2...");    
     // http://www.brokenthorn.com/Resources/OSDevPic.html
     // start initialising PIC1 and PIC2 
@@ -337,5 +337,5 @@ void _k_load_isrs()
     //TODO: some error checking?
     // make it so!
     _k_load_idt(); 
-    printf("ok\n");
+    printf("ok\n");    
 }

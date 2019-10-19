@@ -8,7 +8,8 @@
 #include <stdio.h>
 
 
-#define HZ              1000
+//NOTE: setting this to the same as what the Linux kernel (currently) uses...
+#define HZ              200
 #define CLOCK_FREQ      1193182
 #define ONE_FP32        0x100000000
 #define HALF_FP32       0x010000000
@@ -29,8 +30,10 @@
 #define PIT_MODE_ONESHOT        0x01
 
 uint32_t _k_clock_freq_frac = 0;
+uint32_t _k_clock_freq_whole = 0;
 //TODO: use atomic
 volatile uint32_t _k_clock_frac = 0;
+volatile uint32_t _k_clock_whole = 0;
 volatile uint64_t _k_ms_elapsed;
 // kernel.asm
 extern void _k_update_clock();
@@ -70,14 +73,22 @@ void k_wait_oneshot_one_period()
 
 void k_init_clock()
 {
+    // clock divisor
     double ddiv = (double)CLOCK_FREQ/(double)HZ;
+    // round up 
     ddiv = (ddiv+0.5);
+    // divisor for PIT
     uint16_t div16 = (uint16_t)(ddiv);
+    // scale to 32.32 fixed point
     ddiv *= (double)ONE_FP32;
-    _k_clock_freq_frac = (uint32_t)(((ddiv * 1000.0)/(double)CLOCK_FREQ));
+    // milliseconds per tick
+    uint64_t scaled = (((ddiv * 1000.0)/(double)CLOCK_FREQ));
+    // whole and fractional part
+    _k_clock_freq_whole = (uint32_t)(scaled >> 32);
+    _k_clock_freq_frac = (uint32_t)(scaled & 0x00000000ffffffff);
     _k_ms_elapsed = 0;
 
-    printf("k_init_clock: starting PIT with divider %d, frac in 32.32fp is %d...", (int)div16, _k_clock_freq_frac);
+    printf("k_init_clock: starting PIT for %d HZ with divider %d...", HZ, (int)div16);
 
     // run once to initialise counters
     _k_update_clock();

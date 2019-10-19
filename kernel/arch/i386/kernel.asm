@@ -2,7 +2,10 @@
 section .bss
 ; empty
 section .data
-; empty
+_k_fpu_state_save:
+    resb 28
+
+
 section .rodata
 ; the real mode IDT is used to switch to real mode, whenever we need that
 real_mode_idt:
@@ -92,12 +95,26 @@ _k_halt_cpu:
     hlt 
     jmp .halt_cpu
 
-; this is teh core clock IRQ update function, it counts milliseconds using 32.32 fixed point fractions
+global k_eflags:function
+k_eflags:
+    pushf
+    pop eax
+    ret
+
+;TODO:
+global _k_check_fpu:function
+_k_check_fpu:
+    fninit 
+    fnstenv [_k_fpu_state_save]
+    ret
+
+; this is the core clock IRQ update function, it counts milliseconds using 32.32 fixed point fractions
 ; clock.c
 ; running sum
 extern _k_clock_frac
-; clock frequency fraction
+; clock frequency fraction and whole part
 extern _k_clock_freq_frac
+extern _k_clock_freq_whole
 extern _k_ms_elapsed
 global _k_update_clock:function
 _k_update_clock: 
@@ -108,7 +125,7 @@ _k_update_clock:
     ; update fraction, CF=1 if we're rolling over
     add ebx, [_k_clock_freq_frac]
     ; update ms if fraction rolled over
-    adc eax, 0
+    adc eax, [_k_clock_freq_whole]
     mov [_k_clock_frac], ebx
     mov [_k_ms_elapsed], eax
     pop ebx
