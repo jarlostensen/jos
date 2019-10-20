@@ -108,6 +108,13 @@ _k_check_fpu:
     fnstenv [_k_fpu_state_save]
     ret
 
+; void _k_load_page_directory(uint32_t physPageDirStart)
+global _k_load_page_directory:function
+_k_load_page_directory:
+    mov eax, [esp+4]
+    mov cr3, eax
+    ret
+
 ; this is the core clock IRQ update function, it counts milliseconds using 32.32 fixed point fractions
 ; clock.c
 ; running sum

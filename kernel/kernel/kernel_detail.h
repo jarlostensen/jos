@@ -7,6 +7,8 @@
 void _k_enable_interrupts();
 void _k_disable_interrupts();
 void _k_halt_cpu();
+// switch to the given page directory (i.e. load cr3)
+void _k_load_page_directory(uint32_t physPageDirStart);
 
 typedef enum alignment_enum
 {
