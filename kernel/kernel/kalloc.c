@@ -2,13 +2,12 @@
 #include "kernel_detail.h"
 #include <stdio.h>
 
-extern uint32_t _end;
-static uint32_t _free_ptr;
+static uint32_t _free_ptr = 0;
 static size_t _allocated = 0;
 
 void _k_alloc_init()
 {
-    _free_ptr = _end;
+    _free_ptr = 0xc0000000;
     printf("_k_alloc_init. Kernel heap starts at 0x%x\n", _free_ptr);
 }
 
