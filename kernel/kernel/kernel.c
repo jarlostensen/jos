@@ -55,8 +55,7 @@ void _k_init(void *mboot)
     printf("_k_init, loading at 0x%x\n", mboot);
 
     _k_alloc_init();
-    k_init_cpu();
-    k_paging_init();    
+    k_init_cpu();    
 }
 
 void _k_main()
@@ -70,6 +69,7 @@ void _k_main()
     k_enable_irq(1);
     _k_enable_interrupts();
     k_init_clock();
+    k_paging_init(); 
     
     uint32_t ms = k_get_ms_since_boot();
     printf("waiting for a second starting at %d...", ms);

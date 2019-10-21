@@ -102,8 +102,5 @@ void k_paging_init()
     printf("k_paging_init enabling paging, 1st page table @ 0x%x, 0x%x...", _k_page_dir, _k_page_dir->_phys_address);
     _k_load_page_directory((uint32_t)_k_page_dir);
     _k_enable_paging();  
-    //uint32_t map = k_virt_to_phys(_k_page_dir,0x10173b);
-    // /printf("paging mapped 0x%x to 0x%x\n", 0x10173b, map);
     printf("ok\n");
-    
 }
