@@ -10,6 +10,7 @@
 #include "interrupts.h"
 #include "clock.h"
 #include "cpu.h"
+#include "paging.h"
 
 // =======================================================
 
@@ -26,6 +27,9 @@ gdt_entry_t _gdt[5] = {
     { .limit_low = 0xffff, .base_low = 0, .base_middle = 0, .access.fields = { .rw = 1, .one=1, .privilege=3, .present = 1 }, .granularity.byte = 0b11001111, .base_high = 0 },
 };
 gdt32_descriptor_t _gdt_desc = {.size = sizeof(_gdt), .address = (uint32_t)(_gdt)};
+
+
+
 
 void k_panic()
 {
@@ -48,9 +52,11 @@ void _k_init(void *mboot)
 {       
     k_tty_initialize();
     k_tty_disable_cursor();    
+    printf("_k_init, loading at 0x%x\n", mboot);
+
     _k_alloc_init();
     k_init_cpu();
-    printf("_k_init, loading at 0x%x\n", mboot);
+    k_paging_init();    
 }
 
 void _k_main()

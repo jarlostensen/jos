@@ -115,6 +115,13 @@ _k_load_page_directory:
     mov cr3, eax
     ret
 
+global _k_enable_paging:function
+_k_enable_paging:
+    mov eax, cr0
+    or eax, 0x80000001
+    mov cr0, eax
+    ret
+
 ; this is the core clock IRQ update function, it counts milliseconds using 32.32 fixed point fractions
 ; clock.c
 ; running sum

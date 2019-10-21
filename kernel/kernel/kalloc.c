@@ -16,7 +16,12 @@ void* _k_alloc(size_t bytes, alignment_t alignment)
 {
     switch(alignment)
     {
-        //TODO:
+        case k4k:
+        {
+            _allocated += _free_ptr & 0xfff;
+            _free_ptr = (_free_ptr + 0xfff) & ~0xfff;
+        }
+        break;
         default:;
     }
     uint32_t ptr = _free_ptr;
