@@ -69,7 +69,22 @@ void _k_main()
     k_enable_irq(1);
     _k_enable_interrupts();
     k_init_clock();
-    k_paging_init(); 
+
+    char* test = (char*)_k_alloc(1024, k4k);
+    printf("allocated 1024 bytes from 0x%x\n", test);
+    memset(test, 0x12, 1024);
+    printf("first 10 bytes are ");
+    for(int n = 0; n < 10; ++n)
+    {
+        printf("0x%x ", test[n]);
+    }
+    printf("\n");
+
+    // asm ( "int $3" );
+    // k_paging_init(); 
+    // //TODO: paging breaks ISR handling, why?
+    // // sanity check
+    // asm ( "int $3" );
     
     uint32_t ms = k_get_ms_since_boot();
     printf("waiting for a second starting at %d...", ms);

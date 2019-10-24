@@ -52,6 +52,13 @@ page_table_t        _1st_pt[1024] __attribute__ ((aligned (4096)));
 extern void _k_load_page_directory(uint32_t physPageDirStart);
 extern void _k_enable_paging(void);
 
+void _k_page_fault_handler(uint16_t cs, uint32_t eip)
+{
+    (void)cs;
+    (void)eip;
+    JOS_BOCHS_DBGBREAK();
+}
+
 uint32_t k_virt_to_phys(pd_handle_t pd_, uint32_t virt)
 {
     if(!pd_)
@@ -100,7 +107,11 @@ void k_paging_init()
     
     // make it so
     printf("k_paging_init enabling paging, 1st page table @ 0x%x, 0x%x...", _k_page_dir, _k_page_dir->_phys_address);
+    //k_set_isr_handler(14,_k_page_fault_handler);
     _k_load_page_directory((uint32_t)_k_page_dir);
     _k_enable_paging();  
     printf("ok\n");
+
+    char* test_pf = (char*)0xf00000;
+    printf("@test_pf = %x\n", *test_pf);
 }

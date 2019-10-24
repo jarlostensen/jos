@@ -2,15 +2,16 @@
 #include "kernel_detail.h"
 #include <stdio.h>
 
-void _end(void);
+// in link.ld
+void _k_phys_end(void);
 
 static uint32_t _free_ptr = 0;
 static size_t _allocated = 0;
 
 void _k_alloc_init()
 {
-    _free_ptr = 0xc0000000;
-    printf("_k_alloc_init. Kernel heap starts at 0x%x, _end is 0x%x\n", _free_ptr, &_end);
+    _free_ptr = (uint32_t)&_k_phys_end;
+    printf("_k_alloc_init. Kernel heap starts at 0x%x\n", _free_ptr);
 }
 
 void* _k_alloc(size_t bytes, alignment_t alignment)

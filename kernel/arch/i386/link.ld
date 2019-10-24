@@ -35,4 +35,8 @@ SECTIONS
 
 	/* as long as nothing is automatically added, this will be the end */
 	end = .; _end = .; __end = .;
+
+	/* NOTE: when we go high-kernel these will be different */
+	_k_virtual_end = .;
+	_k_phys_end = .;
 }
