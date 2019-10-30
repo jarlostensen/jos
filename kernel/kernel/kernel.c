@@ -75,13 +75,24 @@ void _k_init(uint32_t magic, multiboot_info_t *mboot)
         if(mboot->flags & MULTIBOOT_INFO_MEMORY)
         {
             printf("\tmem_lower = %d KB, mem_upper = %d KB\n", mboot->mem_lower, mboot->mem_upper);
-            for (multiboot_memory_map_t* mmap = (multiboot_memory_map_t *) mboot->mmap_addr; (unsigned long) mmap <mboot->mmap_addr + mboot->mmap_length; mmap = (multiboot_memory_map_t *) ((unsigned long) mmap + mmap->size + sizeof (mmap->size)))
-                printf (" size = 0x%x, base_addr = 0x%x,"
-                        " length = 0x%x, type = 0x%x\n",
-                        (unsigned) mmap->size,
-                        (unsigned) mmap->addr,
-                        (unsigned) mmap->len,
-                        (unsigned) mmap->type);
+            bool has_available = false;
+            for (multiboot_memory_map_t* mmap = (multiboot_memory_map_t *) mboot->mmap_addr; 
+                (unsigned long) mmap <mboot->mmap_addr + mboot->mmap_length; 
+                mmap = (multiboot_memory_map_t *) ((unsigned long) mmap + mmap->size + sizeof (mmap->size)))
+            {
+                if(mmap->type == MULTIBOOT_MEMORY_AVAILABLE)
+                {
+                    printf ("\tavailable 0x%x bytes @ 0x%x\n",
+                            (unsigned) mmap->len,
+                            (unsigned) mmap->addr);
+                    has_available = true;
+                }                
+            }
+            if(!has_available)
+            {
+                printf("\nERROR: no available RAM\n");
+                k_panic();
+            }
         }
     }
     printf("ok\n");
