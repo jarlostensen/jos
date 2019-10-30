@@ -45,18 +45,16 @@ static const size_t kFrameSize = 0x1000;
 static const size_t kPageDirEntryRange = 0x400000;
 
 // allocated on init
-page_directory_t    _k_page_dir[1024] __attribute__ ((aligned (4096)));
-//TESTING
-page_table_t        _1st_pt[1024] __attribute__ ((aligned (4096)));
+page_directory_t*    _k_page_dir;
 
 extern void _k_load_page_directory(uint32_t physPageDirStart);
 extern void _k_enable_paging(void);
 
-void _k_page_fault_handler(uint16_t cs, uint32_t eip)
+void _k_page_fault_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
 {
-    (void)cs;
-    (void)eip;
-    JOS_BOCHS_DBGBREAK();
+    printf("\npage fault @ 0x%x:0x%x, error = 0x%x\n", cs,eip, error_code);    
+    //todo: fix the fault
+    k_panic();
 }
 
 uint32_t k_virt_to_phys(pd_handle_t pd_, uint32_t virt)
@@ -92,13 +90,12 @@ uint32_t k_virt_to_phys(pd_handle_t pd_, uint32_t virt)
 void k_paging_init()
 {
     // identity map the first meg
-    //_k_page_dir = (page_directory_t*)_k_alloc(sizeof(page_directory_t)*1024, k4k);    
-    //page_table_t * pt = (page_table_t*)_k_alloc(sizeof(page_table_t)*1024, k4k);
-    page_table_t* pt = _1st_pt;
+    _k_page_dir = (page_directory_t*)_k_alloc(sizeof(page_directory_t)*1024, kAlign4k);    
+    page_table_t * pt = (page_table_t*)_k_alloc(sizeof(page_table_t)*1024, kAlign4k);
     _k_page_dir->_phys_address = (uint32_t)pt >> 12;
     _k_page_dir->_present = 1;
     printf("\nallocated pd @ 0x%x, first pt @ 0x%x (0x%x)\n", _k_page_dir,_k_page_dir->_phys_address, pt);        
-    for(size_t size = 0; size < 0x200000; size+=0x1000)
+    for(size_t size = 0; size < 0x800000; size+=0x1000)
     {
         pt->_phys_address = (uint32_t)size >> 12;
         pt->_present = 1;        
@@ -107,11 +104,10 @@ void k_paging_init()
     
     // make it so
     printf("k_paging_init enabling paging, 1st page table @ 0x%x, 0x%x...", _k_page_dir, _k_page_dir->_phys_address);
-    //k_set_isr_handler(14,_k_page_fault_handler);
+    k_set_isr_handler(14,_k_page_fault_handler);
     _k_load_page_directory((uint32_t)_k_page_dir);
     _k_enable_paging();  
     printf("ok\n");
-
     char* test_pf = (char*)0xf00000;
-    printf("@test_pf = %x\n", *test_pf);
+    *test_pf = 0;
 }

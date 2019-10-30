@@ -8,7 +8,7 @@ void _k_init_isrs();
 // effectively load IDT
 void _k_load_isrs();
 
-typedef void (*isr_handler_func_t)(uint16_t caller_cs, uint32_t caller_eip);
+typedef void (*isr_handler_func_t)(uint32_t error_code, uint16_t caller_cs, uint32_t caller_eip);
 // register a handler for the given interrupt.
 // this  can be done at any time after initialisation and the handler will be effective from the 
 // next interrupt.

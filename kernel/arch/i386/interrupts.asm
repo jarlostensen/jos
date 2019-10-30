@@ -96,12 +96,13 @@ isr_handler_stub:
     mov ax, ds
     push eax
     
+    cld
     ;TODO: swap to kernel data segments + stack    
-    call _k_isr_handler
+    call _k_isr_handler    
     pop eax
     popad
-    ; from handler entry point (isr id)
-    add esp,+4
+    ; from handler entry point (error code + isr id)
+    add esp,+8    
     iret
 
 ; the frame/stub for an isr. 
@@ -109,6 +110,18 @@ isr_handler_stub:
 global _k_isr%1:function
 _k_isr%1:
     cli
+    ; empty error code
+    push 0
+    ; isr id
+    push dword %1
+    jmp isr_handler_stub
+%endmacro
+
+%macro TRAP_HANDLER 1
+global _k_isr%1:function
+_k_isr%1:
+    cli     
+    ; error code is already pushed
     ; isr id
     push dword %1
     jmp isr_handler_stub
@@ -128,7 +141,7 @@ ISR_HANDLER 10
 ISR_HANDLER 11
 ISR_HANDLER 12
 ISR_HANDLER 13
-ISR_HANDLER 14
+TRAP_HANDLER 14
 ISR_HANDLER 15
 ISR_HANDLER 16
 ISR_HANDLER 17

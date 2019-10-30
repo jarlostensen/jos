@@ -48,8 +48,9 @@ void k_panic()
     _k_halt_cpu();
 }
 
-static void isr_3_handler(uint16_t cs, uint32_t eip)
+static void isr_3_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
 {
+    (void)error_code;
     printf("\tint 3 handler: next instruction is at 0x%x:0x%x\n",cs,eip);
 }
 
@@ -108,16 +109,12 @@ void _k_main()
     k_set_isr_handler(3, isr_3_handler);
     k_set_irq_handler(1, irq_1_handler);
     _k_load_isrs();
+    k_paging_init(); 
+
     k_enable_irq(1);
     _k_enable_interrupts();
     k_init_clock();
 
-    // asm ( "int $3" );
-    // k_paging_init(); 
-    // //TODO: paging breaks ISR handling, why?
-    // // sanity check
-    // asm ( "int $3" );
-    
     uint32_t ms = k_get_ms_since_boot();
     printf("waiting for a second starting at %d...", ms);
     while(ms<1000)

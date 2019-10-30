@@ -133,9 +133,8 @@ struct isr_stack_struct
     
     // pushed by CPU
     uint32_t    error_code;
-    //TODO: check the order here, something isn't right
-    uint32_t    cs;
     uint32_t    eip;    
+    uint32_t    cs;
     uint32_t    eflags;
     // iff privilege level switch
     uint32_t    _esp;
@@ -157,7 +156,7 @@ void _k_isr_handler(isr_stack_t isr_stack)
 {
     if(_isr_handlers[isr_stack.handler_id])
     {
-        _isr_handlers[isr_stack.handler_id](isr_stack.cs, isr_stack.eip);
+        _isr_handlers[isr_stack.handler_id](isr_stack.error_code, isr_stack.cs, isr_stack.eip);
         return;
     }
     // no handler
