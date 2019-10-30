@@ -66,17 +66,25 @@ void _k_init(uint32_t magic, multiboot_info_t *mboot)
     printf("_k_init...");
     if(magic!=MULTIBOOT_BOOTLOADER_MAGIC)
     {
-        printf("FAIL, not loaded with multiboot\n");
+        printf("FAIL, not loaded with multiboot!\n");
+        k_panic();
     }
     else
     {
         printf("multiboot detected\n");
         if(mboot->flags & MULTIBOOT_INFO_MEMORY)
         {
-            printf("\tmem_lower = %d KB, mem_upper = %d KB, ", mboot->mem_lower, mboot->mem_upper);
+            printf("\tmem_lower = %d KB, mem_upper = %d KB\n", mboot->mem_lower, mboot->mem_upper);
+            for (multiboot_memory_map_t* mmap = (multiboot_memory_map_t *) mboot->mmap_addr; (unsigned long) mmap <mboot->mmap_addr + mboot->mmap_length; mmap = (multiboot_memory_map_t *) ((unsigned long) mmap + mmap->size + sizeof (mmap->size)))
+                printf (" size = 0x%x, base_addr = 0x%x,"
+                        " length = 0x%x, type = 0x%x\n",
+                        (unsigned) mmap->size,
+                        (unsigned) mmap->addr,
+                        (unsigned) mmap->len,
+                        (unsigned) mmap->type);
         }
     }
-    
+    printf("ok\n");
     _k_alloc_init();
     k_init_cpu();    
 }
