@@ -5,6 +5,7 @@
 #include "../include/kernel/tty.h"
 #include "kernel_detail.h"
 #include "dt.h"
+#include "multiboot.h"
 
 #include "../arch/i386/vga.h"
 #include "interrupts.h"
@@ -14,7 +15,7 @@
 
 // =======================================================
 
-gdt_entry_t _gdt[5] = {
+gdt_entry_t _k_gdt[] = {
     // null
     { .limit_low = 0, .base_low = 0, .base_middle = 0, .access.byte = 0, .granularity.byte = 0, .base_high = 0 },
     // kernel code
@@ -26,10 +27,19 @@ gdt_entry_t _gdt[5] = {
     // user data
     { .limit_low = 0xffff, .base_low = 0, .base_middle = 0, .access.fields = { .rw = 1, .one=1, .privilege=3, .present = 1 }, .granularity.byte = 0b11001111, .base_high = 0 },
 };
-gdt32_descriptor_t _gdt_desc = {.size = sizeof(_gdt), .address = (uint32_t)(_gdt)};
+gdt32_descriptor_t _k_gdt_desc = {.size = sizeof(_k_gdt), .address = (uint32_t)(_k_gdt)};
 
-
-
+// the 16 bit GDT is used for switching to real mode during boot (and perhaps later)
+// Notably: 64K limit, 1 byte granularity, and 16 bit.
+gdt_entry_t _k_gdt16[] = {
+    // null
+    { .limit_low = 0, .base_low = 0, .base_middle = 0, .access.byte = 0, .granularity.byte = 0, .base_high = 0 },
+    // 16 bit code
+    { .limit_low = 0xffff, .base_low = 0, .base_middle = 0, .access.fields = { .rw = 1,  .executable = 1, .one=1, .privilege=0, .present = 1 }, .granularity.fields = { .limit_high = 0, .size = 0, .granularity = 0 }, .base_high = 0 },
+    // 16 bit data
+    { .limit_low = 0xffff, .base_low = 0, .base_middle = 0, .access.fields = { .rw = 1,  .executable = 0, .one=1, .privilege=0, .present = 1 }, .granularity.fields = { .limit_high = 0, .size = 0, .granularity = 0 }, .base_high = 0 },
+};
+gdt32_descriptor_t _k_gdt16_desc = {.size = sizeof(_k_gdt16), .address = (uint32_t)(_k_gdt16)};
 
 void k_panic()
 {
@@ -48,12 +58,25 @@ static void irq_1_handler(int irq)
     printf("\tIRQ %d handler, keyboard\n", irq);
 }
 
-void _k_init(void *mboot)
+void _k_init(uint32_t magic, multiboot_info_t *mboot)
 {       
     k_tty_initialize();
     k_tty_disable_cursor();    
-    printf("_k_init, loading at 0x%x\n", mboot);
 
+    printf("_k_init...");
+    if(magic!=MULTIBOOT_BOOTLOADER_MAGIC)
+    {
+        printf("FAIL, not loaded with multiboot\n");
+    }
+    else
+    {
+        printf("multiboot detected\n");
+        if(mboot->flags & MULTIBOOT_INFO_MEMORY)
+        {
+            printf("\tmem_lower = %d KB, mem_upper = %d KB, ", mboot->mem_lower, mboot->mem_upper);
+        }
+    }
+    
     _k_alloc_init();
     k_init_cpu();    
 }
@@ -69,16 +92,6 @@ void _k_main()
     k_enable_irq(1);
     _k_enable_interrupts();
     k_init_clock();
-
-    char* test = (char*)_k_alloc(1024, k4k);
-    printf("allocated 1024 bytes from 0x%x\n", test);
-    memset(test, 0x12, 1024);
-    printf("first 10 bytes are ");
-    for(int n = 0; n < 10; ++n)
-    {
-        printf("0x%x ", test[n]);
-    }
-    printf("\n");
 
     // asm ( "int $3" );
     // k_paging_init(); 

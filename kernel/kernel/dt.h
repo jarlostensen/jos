@@ -67,6 +67,13 @@ struct gdt32_descriptor_struct
 } __attribute__((packed));
 typedef struct gdt32_descriptor_struct gdt32_descriptor_t;
 
+//TODO:
+struct gdt16_descriptor_struct
+{
+    uint16_t size;
+    uint16_t address;
+} __attribute__((packed));
+typedef struct gdt16_descriptor_struct gdt16_descriptor_t;
 
 #define K_CODE_SELECTOR     0x08
 #define K_DATA_SELECTOR     0x10
