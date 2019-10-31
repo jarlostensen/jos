@@ -50,9 +50,17 @@ page_directory_t*    _k_page_dir;
 extern void _k_load_page_directory(uint32_t physPageDirStart);
 extern void _k_enable_paging(void);
 
+#define PF_PRESENT          0x1
+#define PF_WRITE            0x2
+#define PF_USER             0x4
+#define PF_RESERVED_WRITE   0x8
+#define PF_INSTR_FETCH      0x10
+
 void _k_page_fault_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
 {
-    printf("\npage fault @ 0x%x:0x%x, error = 0x%x\n", cs,eip, error_code);    
+    unsigned long virt;
+    asm volatile ( "mov %%cr2, %0" : "=r"(virt) );
+    printf("\npage fault @ 0x%x [0x%x:0x%x] error = 0x%x\n", virt, cs,eip, error_code);
     //todo: fix the fault
     k_panic();
 }
