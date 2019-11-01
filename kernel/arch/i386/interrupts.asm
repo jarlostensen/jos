@@ -105,7 +105,8 @@ isr_handler_stub:
     add esp,+8    
     iret
 
-; the frame/stub for an isr. 
+
+; an isr/fault/trap that doesn't provide an error code
 %macro ISR_HANDLER 1
 global _k_isr%1:function
 _k_isr%1:
@@ -117,7 +118,8 @@ _k_isr%1:
     jmp isr_handler_stub
 %endmacro
 
-%macro TRAP_HANDLER 1
+; some faults (but not all) provide an error code
+%macro ISR_HANDLER_ERROR_CODE 1
 global _k_isr%1:function
 _k_isr%1:
     cli     
@@ -127,27 +129,49 @@ _k_isr%1:
     jmp isr_handler_stub
 %endmacro
 
+; divide by zero
 ISR_HANDLER 0
+; debug
 ISR_HANDLER 1
+; NMI
 ISR_HANDLER 2
+; breakpoint
 ISR_HANDLER 3
+; overflow
 ISR_HANDLER 4
+; bound range exceeded
 ISR_HANDLER 5
+; invalid opcode
 ISR_HANDLER 6
+; device not available
 ISR_HANDLER 7
-ISR_HANDLER 8
+; double fault
+ISR_HANDLER_ERROR_CODE 8
+; "coprocessor segment overrun"
 ISR_HANDLER 9
-ISR_HANDLER 10
-ISR_HANDLER 11
-ISR_HANDLER 12
-ISR_HANDLER 13
-TRAP_HANDLER 14
+; invalid TSS
+ISR_HANDLER_ERROR_CODE 10
+; segment not present
+ISR_HANDLER_ERROR_CODE 11
+; stack segment fault
+ISR_HANDLER_ERROR_CODE 12
+; genera protection fault
+ISR_HANDLER_ERROR_CODE 13
+; page fault
+ISR_HANDLER_ERROR_CODE 14
+; this one is reserved...
 ISR_HANDLER 15
+; x87 FP exception
 ISR_HANDLER 16
-ISR_HANDLER 17
+; alignment check fault
+ISR_HANDLER_ERROR_CODE 17
+; machine check
 ISR_HANDLER 18
+; SIMD fp exception
 ISR_HANDLER 19
+; virtualization exception
 ISR_HANDLER 20
+; reserved
 ISR_HANDLER 21
 ISR_HANDLER 22
 ISR_HANDLER 23
@@ -157,5 +181,7 @@ ISR_HANDLER 26
 ISR_HANDLER 27
 ISR_HANDLER 28
 ISR_HANDLER 29
-ISR_HANDLER 30
+; security exception
+ISR_HANDLER_ERROR_CODE 30
+; "fpu error interrupt"
 ISR_HANDLER 31
