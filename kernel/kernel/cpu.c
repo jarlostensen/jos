@@ -14,9 +14,9 @@ static unsigned int _max_basic_cpuid = 0;
 static unsigned int _max_extended_cpuid = 0;
 //TODO:static int _has_fpu = 0;
 
-void k_init_cpu()
+void k_cpu_init()
 {    
-    printf("k_init_cpu");
+    printf("k_cpu_init");
     unsigned int flags = k_eflags();
     _max_basic_cpuid = __get_cpuid_max(0, NULL);
     if(_max_basic_cpuid)

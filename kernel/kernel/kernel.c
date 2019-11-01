@@ -13,6 +13,7 @@
 #include "clock.h"
 #include "cpu.h"
 #include "paging.h"
+#include "serial.h"
 
 // =======================================================
 
@@ -141,16 +142,18 @@ void _k_init(uint32_t magic, multiboot_info_t *mboot)
     }
     printf("ok\n");
     _k_alloc_init();
-    k_init_cpu();    
+    k_cpu_init();    
+    k_serial_init();
 }
 
 void _k_main()
 {    
-    printf("\n_kmain %s\n", k_is_protected_mode() ? "protected mode":"real mode");    
+    printf("\n_kmain\n");
+    JOS_KTRACE("booting\n");
 
     _k_init_isrs();    
     k_set_irq_handler(1, irq_1_handler);
-    
+
     k_set_isr_handler(0, isr_0_handler);
     k_set_isr_handler(1, isr_1_handler);
     k_set_isr_handler(2, isr_2_handler);
@@ -163,8 +166,8 @@ void _k_main()
 
     k_enable_irq(1);
     _k_enable_interrupts();
-    k_init_clock();
-
+    k_clock_init();
+    
     uint32_t ms = k_get_ms_since_boot();
     printf("waiting for a second starting at %d...", ms);
     while(ms<1000)
@@ -180,5 +183,6 @@ void _k_main()
     ms = k_get_ms_since_boot();
     printf("done, one 1/18 period took ~%d ms\n", ms-ms_start);
 
+    JOS_KTRACE("halting\n");
     k_panic();
 }

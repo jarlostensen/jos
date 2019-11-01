@@ -3,6 +3,6 @@
 
 #include <cpuid.h>
 
-void k_init_cpu();
+void k_cpu_init();
 
 #endif // JOS_CPU_H

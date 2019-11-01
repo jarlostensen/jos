@@ -5,6 +5,8 @@ SECTIONS
 {
 	/*TODO: high kernel */
 	. = 1M;
+	_k_virtual_start = .;
+	_k_phys_start = .;
  
  	/* multiboot header and code */
 	.text BLOCK(4K) : ALIGN(4K)

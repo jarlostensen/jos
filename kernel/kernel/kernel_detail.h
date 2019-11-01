@@ -3,12 +3,17 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "../include/kernel/kernel.h"
+
+int k_is_protected_mode();
+void k_panic();
+uint32_t k_eflags();
 
 void _k_enable_interrupts();
 void _k_disable_interrupts();
 void _k_halt_cpu();
-// switch to the given page directory (i.e. load cr3)
-void _k_load_page_directory(uint32_t physPageDirStart);
+// wait by doing a nop-write to port 0x80 (POST)
+void k_io_wait(void);
 
 typedef enum alignment_enum
 {

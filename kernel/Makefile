@@ -37,6 +37,8 @@ kernel/interrupts.o \
 kernel/clock.o \
 kernel/cpu.o \
 kernel/paging.o \
+kernel/serial.o \
+kernel/ktrace.o \
 
 OBJS=\
 $(ARCHDIR)/crti.o \

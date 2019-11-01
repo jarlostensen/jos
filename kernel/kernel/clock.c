@@ -71,7 +71,7 @@ void k_wait_oneshot_one_period()
     } while(msb);
 }
 
-void k_init_clock()
+void k_clock_init()
 {
     // clock divisor
     double ddiv = (double)CLOCK_FREQ/(double)HZ;

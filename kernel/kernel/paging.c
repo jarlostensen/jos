@@ -50,7 +50,6 @@ page_directory_t*    _k_page_dir;
 extern void _k_load_page_directory(uint32_t physPageDirStart);
 extern void _k_enable_paging(void);
 
-
 uint32_t k_virt_to_phys(pd_handle_t pd_, uint32_t virt)
 {
     if(!pd_)
