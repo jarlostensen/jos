@@ -8,6 +8,7 @@
 #include "multiboot.h"
 
 #include "../arch/i386/vga.h"
+#include "../arch/i386/hde/hde32.h"
 #include "interrupts.h"
 #include "clock.h"
 #include "cpu.h"
@@ -48,10 +49,52 @@ void k_panic()
     _k_halt_cpu();
 }
 
+// ======================================================================================
+// general isr/trap/fault handlers
+
+static void isr_0_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
+{
+    (void)error_code;
+    // divide by 0
+    printf("\tdivide by zero @ 0x%x:0x%x\n",cs,eip);
+}
+
+static void isr_1_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
+{
+    (void)error_code;
+    // debug (hardware bps, instruction fetch bp, etc.)
+    printf("\tdebug interrupt @ 0x%x:0x%x\n",cs,eip);
+}
+
+static void isr_2_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
+{
+    (void)error_code;
+    // divide by 0
+    printf("\tdivide by zero @ 0x%x:0x%x\n",cs,eip);
+}
+
 static void isr_3_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
 {
     (void)error_code;
-    printf("\tint 3 handler: next instruction is at 0x%x:0x%x\n",cs,eip);
+    printf("\tint 3 @ 0x%x:0x%x\n",cs,eip);
+}
+
+static void isr_4_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
+{
+    (void)error_code;
+    printf("\toverflow interrupt @ 0x%x:0x%x\n",cs,eip);
+}
+
+static void isr_5_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
+{
+    (void)error_code;
+    printf("\tbound range exceeded interrupt @ 0x%x:0x%x\n",cs,eip);
+}
+
+static void isr_6_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
+{
+    (void)error_code;
+    printf("\tinvalid opcode @ 0x%x:0x%x\n",cs,eip);
 }
 
 static void irq_1_handler(int irq)
@@ -106,8 +149,15 @@ void _k_main()
     printf("\n_kmain %s\n", k_is_protected_mode() ? "protected mode":"real mode");    
 
     _k_init_isrs();    
-    k_set_isr_handler(3, isr_3_handler);
     k_set_irq_handler(1, irq_1_handler);
+    
+    k_set_isr_handler(0, isr_0_handler);
+    k_set_isr_handler(1, isr_1_handler);
+    k_set_isr_handler(2, isr_2_handler);
+    k_set_isr_handler(3, isr_3_handler);
+    k_set_isr_handler(4, isr_4_handler);
+    k_set_isr_handler(5, isr_5_handler);
+    k_set_isr_handler(6, isr_6_handler);
     _k_load_isrs();
     k_paging_init(); 
 

@@ -21,6 +21,7 @@ LIBS:=$(LIBS) -nostdlib -lk -lgcc
 ARCHDIR=arch/$(HOSTARCH)
 
 include $(ARCHDIR)/make.config
+include $(ARCHDIR)/hde/make.config
 
 CFLAGS:=$(CFLAGS) $(KERNEL_ARCH_CFLAGS)
 CPPFLAGS:=$(CPPFLAGS) $(KERNEL_ARCH_CPPFLAGS)
@@ -29,6 +30,7 @@ LIBS:=$(LIBS) $(KERNEL_ARCH_LIBS)
 
 KERNEL_OBJS=\
 $(KERNEL_ARCH_OBJS) \
+$(KERNEL_ARCH_EXT_OBJS)\
 kernel/kernel.o \
 kernel/kalloc.o \
 kernel/interrupts.o \
@@ -65,10 +67,10 @@ $(ARCHDIR)/crtbegin.o $(ARCHDIR)/crtend.o:
 	OBJ=`$(CC) $(CFLAGS) $(LDFLAGS) -print-file-name=$(@F)` && cp "$$OBJ" $@
 
 .c.o:
-	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS) $(CPPFLAGS)
+	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS) $(CPPFLAGS) -D$(HOSTARCH)
 
 .S.o:
-	$(CC) -MD -c $< -o $@ $(CFLAGS) $(CPPFLAGS)
+	$(CC) -MD -c $< -o $@ $(CFLAGS) $(CPPFLAGS) -D$(HOSTARCH)
 
 .asm.o:
 	$(AS) $(ASFLAGS) $< -o $@
