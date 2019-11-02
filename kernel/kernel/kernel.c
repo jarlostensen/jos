@@ -139,9 +139,9 @@ void _k_init(uint32_t magic, multiboot_info_t *mboot)
         }
     }
     printf("ok\n");
-    _k_alloc_init();
-    k_cpu_init();    
     k_serial_init();
+    _k_alloc_init();
+    k_cpu_init();        
 }
 
 void _k_main()
@@ -170,6 +170,7 @@ void _k_main()
     while(ms<=1000)
     {
         ms = k_get_ms_since_boot();
+        k_pause();
     }    
     printf("ok, we're at %dms\n", ms);
     

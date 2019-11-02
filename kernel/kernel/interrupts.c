@@ -196,7 +196,7 @@ isr_handler_func_t k_set_isr_handler(int i, isr_handler_func_t handler)
 void k_set_irq_handler(int i, irq_handler_func_t handler)
 {
     JOS_ASSERT(_irq_handlers[i]==0);
-    JOS_ASSERT(i > 0 && i < 31);
+    JOS_ASSERT(i >= 0 && i < 31);
     //DEBUG:printf("k_set_irq_handler 0x%x, 0x%x\n", i, handler);
     _irq_handlers[i] = handler;    
 }

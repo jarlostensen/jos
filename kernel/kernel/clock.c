@@ -45,7 +45,8 @@ static void clock_irq_handler(int i)
 {
     (void)i;
     _k_update_clock();    
-    //TODO: anythin' else...?
+    
+    //TODO: check if any outstanding timers are pending etc.
 }
 
 uint64_t k_get_ms_since_boot()
