@@ -195,9 +195,8 @@ isr_handler_func_t k_set_isr_handler(int i, isr_handler_func_t handler)
 
 void k_set_irq_handler(int i, irq_handler_func_t handler)
 {
-    //TODO: assert if handler already set, don't allow overwrites
-    //TODO: assert if i not in range 0..31
-
+    JOS_ASSERT(_irq_handlers[i]==0);
+    JOS_ASSERT(i > 0 && i < 31);
     //DEBUG:printf("k_set_irq_handler 0x%x, 0x%x\n", i, handler);
     _irq_handlers[i] = handler;    
 }
@@ -244,10 +243,11 @@ bool k_irq_enabled(int i)
 
 void _k_init_isrs()
 {
+    JOS_KTRACE("_k_init_isrs\n");
     memset(_idt, 0, sizeof(_idt));
     memset(_isr_handlers, 0, sizeof(_isr_handlers));
     memset(_irq_handlers, 0, sizeof(_irq_handlers));
-    printf("initialising PIC1 and PIC2...");    
+
     // http://www.brokenthorn.com/Resources/OSDevPic.html
     // start initialising PIC1 and PIC2 
     k_outb(PIC1_COMMAND , ICW1_INIT | ICW1_ICW4);
@@ -268,9 +268,7 @@ void _k_init_isrs()
 	k_outb(PIC1_DATA, 0xff);
 	k_outb(PIC2_DATA, 0xff);
     k_io_wait();    
-    printf("ok\n");
 
-    printf("initialising isr and irq handler tables...");
 #define K_ISR_SET(i)\
     idt_set_gate(i,K_CODE_SELECTOR,(uint32_t)_k_isr##i,&(idt_type_attr_t){.gate_type = 0xe, .dpl = 0, .present = 1})
 
@@ -326,15 +324,12 @@ void _k_init_isrs()
     K_IRQ_SET(13);
     K_IRQ_SET(14);
     K_IRQ_SET(15);
-
-    printf("ok\n");
 }
 
 void _k_load_isrs()
 {
-    printf("loading IDT...");
+    JOS_KTRACE("_k_load_isrs\n");
     //TODO: some error checking?
     // make it so!
     _k_load_idt(); 
-    printf("ok\n");    
 }

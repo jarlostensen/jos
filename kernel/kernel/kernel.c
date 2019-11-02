@@ -146,8 +146,7 @@ void _k_init(uint32_t magic, multiboot_info_t *mboot)
 
 void _k_main()
 {    
-    printf("\n_kmain\n");
-    JOS_KTRACE("booting\n");
+    JOS_KTRACE("_kmain, booting\n");
 
     _k_init_isrs();    
     k_set_irq_handler(1, irq_1_handler);
@@ -163,23 +162,27 @@ void _k_main()
     k_paging_init(); 
 
     k_enable_irq(1);
-    _k_enable_interrupts();
     k_clock_init();
+    _k_enable_interrupts();
     
     uint32_t ms = k_get_ms_since_boot();
-    printf("waiting for a second starting at %d...", ms);
-    while(ms<1000)
+    printf("waiting for a second starting at %d...", ms);    
+    while(ms<=1000)
     {
         ms = k_get_ms_since_boot();
-    }
+    }    
     printf("ok, we're at %dms\n", ms);
     
     ms = k_get_ms_since_boot();
-    printf("waiting for one period starting at %d...", ms);
+    printf("waiting for one 1/18 period...");
     uint32_t ms_start = k_get_ms_since_boot();
+    uint64_t rdtsc_start = __rdtsc();
     k_wait_oneshot_one_period();
+    uint64_t rdtsc_end = __rdtsc();
     ms = k_get_ms_since_boot();
-    printf("done, one 1/18 period took ~%d ms\n", ms-ms_start);
+    const uint64_t cycles = rdtsc_end - rdtsc_start;
+    const uint64_t elapsed_ms = ms-ms_start;
+    printf("%lld ms and %lld cycles elapsed ): %lld MHz\n", elapsed_ms, cycles, (cycles/elapsed_ms)/1000);
 
     JOS_KTRACE("halting\n");
     k_panic();
