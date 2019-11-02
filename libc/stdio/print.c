@@ -1,13 +1,12 @@
 #include <limits.h>
 #include <stdbool.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
 typedef int (*print_func_t)(void* ctx, const char* data, size_t len);
 typedef int (*putchar_func_t)(void* ctx, int character);
 
-// the various printf/sprintf etc. functions use an implementation template (_printf_impl), this structure 
+// the various printf/sprintf etc. functions use an implementation template (_vprint_impl), this structure 
 // effectively provides the different policies used.
 struct _printf_ctx_struct
 {
@@ -93,7 +92,7 @@ static int printhex(_printf_ctx_t* ctx, long d)
 }
 
 // https://en.wikipedia.org/wiki/Printf_format_string
-int _printf_impl(_printf_ctx_t* ctx, const char * __restrict format, va_list parameters)
+int _vprint_impl(_printf_ctx_t* ctx, const char * __restrict format, va_list parameters)
 {	
 	int written = 0;
 
@@ -220,7 +219,7 @@ int printf(const char* restrict format, ...)
 {
 	va_list parameters;
 	va_start(parameters, format);
-    int count = _printf_impl(&(_printf_ctx_t){ ._print = console_print, ._putchar = console_putchar }, format, parameters);
+    int count = _vprint_impl(&(_printf_ctx_t){ ._print = console_print, ._putchar = console_putchar }, format, parameters);
     va_end(parameters);
     return count;
 }
@@ -255,7 +254,7 @@ int sprintf(char * __restrict buffer, const char * __restrict format, ... )
 {
 	va_list parameters;
 	va_start(parameters, format);
-    int written = _printf_impl(&(_printf_ctx_t) { 
+    int written = _vprint_impl(&(_printf_ctx_t) { 
         ._print = buffer_print, 
         ._putchar = buffer_putchar, 
         ._that = (void*)&(buffer_t){ ._wp = buffer } 
@@ -292,7 +291,7 @@ int snprintf ( char * buffer, size_t n, const char * format, ... )
 {
     va_list parameters;
 	va_start(parameters, format);
-    int written = _printf_impl(&(_printf_ctx_t) {
+    int written = _vprint_impl(&(_printf_ctx_t) {
         ._print = buffer_n_print,
             ._putchar = buffer_n_putchar,
             ._that = (void*) & (buffer_t) { ._wp = buffer, ._end = buffer+(n-1) }
@@ -302,4 +301,16 @@ int snprintf ( char * buffer, size_t n, const char * format, ... )
     buffer[written] = 0;
     va_end(parameters);
 	return written;
+}
+
+int vsnprintf(char* buffer, size_t n, const char* format, va_list parameters)
+{
+    int written = _vprint_impl(&(_printf_ctx_t) {
+        ._print = buffer_n_print,
+            ._putchar = buffer_n_putchar,
+            ._that = (void*) & (buffer_t) { ._wp = buffer, ._end = buffer + (n - 1) }
+    },
+        format, parameters);
+    buffer[written < (int)n ? written : (int)n - 1] = 0;
+    return written;
 }

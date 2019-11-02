@@ -3,6 +3,7 @@
 
 #include <sys/cdefs.h>
 #include <stddef.h>
+#include <stdarg.h>
 
 #define EOF (-1)
 
@@ -15,6 +16,7 @@ int putchar(int);
 int puts(const char*);
 int sprintf (char * __restrict, const char * __restrict, ... );
 int snprintf ( char * __restrict, size_t n, const char * __restrict, ... );
+int vsnprintf(char* buffer, size_t n, const char* format, va_list parameters);
 
 #ifdef __cplusplus
 }

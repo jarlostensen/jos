@@ -95,13 +95,6 @@ _k_halt_cpu:
     hlt 
     jmp .halt_cpu
 
-; pause CPU in spin locks
-; TODO: use mpause/mwait instructions when available 
-global k_pause:function
-k_pause:
-    nop
-    ret
-
 global k_eflags:function
 k_eflags:
     pushf

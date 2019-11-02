@@ -5,11 +5,15 @@
 #include "serial.h"
 #include "clock.h"
 
-void _k_trace(const char* msg)
+void _k_trace(const char* format,...)
 {
-    if(!msg || !msg[0])
+    if(!format || !format[0])
         return;
     char buffer[256];
-    snprintf(buffer, sizeof(buffer), "[%lld] %s", k_get_ms_since_boot(), msg);
+    va_list parameters;
+    va_start(parameters, format);
+    int written = snprintf(buffer, sizeof(buffer), "[%lld] ", k_get_ms_since_boot());
+    vsnprintf(buffer+written, sizeof(buffer)-written, format, parameters);
+    va_end(parameters);
     k_serial_write(kCom1, buffer, strlen(buffer));
 }

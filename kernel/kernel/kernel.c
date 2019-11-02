@@ -1,8 +1,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
-#include "../include/kernel/kernel.h"
-#include "../include/kernel/tty.h"
 #include "kernel_detail.h"
 #include "dt.h"
 #include "multiboot.h"

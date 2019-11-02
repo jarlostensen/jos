@@ -1,6 +1,5 @@
 
 #include "kernel_detail.h"
-#include <kernel/kernel.h>
 #include "cpu.h"
 #include <stdio.h>
 
@@ -23,6 +22,9 @@ void k_cpu_init()
     {
         _max_extended_cpuid = __get_cpuid_max(0x80000000, NULL);
         printf(" _max_basic_cpu = %d, _max_extended_cpu = %x\n", _max_basic_cpuid, _max_extended_cpuid);
+
+        //TODO: throw a fit if max basic or extended are too low...
+
     }
     else
     {
