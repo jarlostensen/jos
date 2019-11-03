@@ -12,6 +12,7 @@ uint32_t k_eflags();
 void _k_enable_interrupts();
 void _k_disable_interrupts();
 void _k_halt_cpu();
+uint64_t _k_clock_est_cpu_freq();
 // wait by doing a nop-write to port 0x80 (POST)
 void k_io_wait(void);
 

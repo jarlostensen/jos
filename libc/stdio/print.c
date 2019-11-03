@@ -16,18 +16,27 @@ struct _printf_ctx_struct
 };
 typedef struct _printf_ctx_struct _printf_ctx_t;
 
-static int printdecimal(_printf_ctx_t* ctx, long d)
+static int printdecimal(_printf_ctx_t* ctx, long long d, int un_signed)
 {
-	int written = 0;
+    int written = 0;
+    if (!d)
+    {
+        ctx->_putchar(ctx->_that, (int)'0');
+        return 1;
+    }
+
     if (d < 0)
     {
-        ctx->_putchar(ctx->_that, (int)'-');
+        if (!un_signed)
+        {
+            ctx->_putchar(ctx->_that, (int)'-');
+            ++written;
+        }
         d *= -1;
-        ++written;
     }
     // simple and dumb but it works...
     int pow_10 = 1;
-    int dd = d;
+    long long dd = d;
 
     // find highest power of 10 
     while (dd > 9)
@@ -37,8 +46,8 @@ static int printdecimal(_printf_ctx_t* ctx, long d)
     }
 
     // print digits from MSD to LSD
-    while(true) {
-        ctx->_putchar(ctx->_that, (int)'0' + dd);
+    while (true) {
+        ctx->_putchar(ctx->_that, (int)'0' + (int)dd);
         ++written;
         d = d - (dd * pow_10);
         pow_10 /= 10;
@@ -49,24 +58,24 @@ static int printdecimal(_printf_ctx_t* ctx, long d)
     return written;
 }
 
-static int printhex(_printf_ctx_t* ctx, long d)
+static int printhex(_printf_ctx_t* ctx, long long d)
 {
     static const char* kHexDigits = "0123456789abcdef";
     int written = 0;
     if (d < 0)
     {
         d *= -1;
-		//don't write a sign         
+        //don't write a sign         
     }
     if (d <= 256)
     {
-        if(d > 15)
-            ctx->_putchar(ctx->_that, (int)kHexDigits[(d&0xf0)>>4]);
+        if (d > 15)
+            ctx->_putchar(ctx->_that, (int)kHexDigits[(d & 0xf0) >> 4]);
         ctx->_putchar(ctx->_that, (int)kHexDigits[(d & 0xf)]);
         return 1;
-    }    
+    }
     int high_idx = 0;
-    long dd = d;
+    long long dd = d;
     while (dd > 15)
     {
         dd >>= 4;
@@ -74,127 +83,251 @@ static int printhex(_printf_ctx_t* ctx, long d)
     }
     // convert to byte offset
     high_idx >>= 1;
-	// read from MSD to LSD
-    const char* bytes = (const char*)(&d) + high_idx;    
+    // read from MSD to LSD
+    const char* bytes = (const char*)(&d) + high_idx;
     do
     {
-		//NOTE: this will always "pad" the output to an even number of nybbles
+        //NOTE: this will always "pad" the output to an even number of nybbles
         size_t lo = *bytes & 0x0f;
-        size_t hi = (*bytes & 0xf0)>>4;
+        size_t hi = (*bytes & 0xf0) >> 4;
         ctx->_putchar(ctx->_that, (int)kHexDigits[hi]);
         ctx->_putchar(ctx->_that, (int)kHexDigits[lo]);
         written += 2;
         --high_idx;
         --bytes;
-    } while (high_idx>=0);
+    } while (high_idx >= 0);
 
     return written;
 }
 
-// https://en.wikipedia.org/wiki/Printf_format_string
-int _vprint_impl(_printf_ctx_t* ctx, const char * __restrict format, va_list parameters)
-{	
-	int written = 0;
+static int printbin(_printf_ctx_t* ctx, unsigned long long d)
+{
+    int written = 0;
+    unsigned long long dd = d;
+    unsigned long long bc = 0;
+    while (dd) 
+    {
+        dd >>= 1;
+        ++bc;
+    }
+    while (bc)
+    {
+        unsigned long dc = d & (1ull << (bc-1));
+        dc >>= (bc-1);
+        ctx->_putchar(ctx->_that, (int)'0' + (int)dc);
+        --bc;
+        ++written;
+    }
+    return written;
+}
 
-	while (*format != '\0') {
-		size_t maxrem = INT_MAX - written;
+int _vprint_impl(_printf_ctx_t* ctx, const char* __restrict format, va_list parameters)
+{
+    int written = 0;
 
-		if (format[0] != '%' || format[1] == '%') {
-			if (format[0] == '%')
-				format++;
-			size_t amount = 1;
-			while (format[amount] && format[amount] != '%')
-				amount++;
-			if (maxrem < amount) {
-				// TODO: Set errno to EOVERFLOW.
-				return -1;
-			}
-			if (!ctx->_print(ctx->_that, format, amount))
-				return -1;
-			format += amount;
-			written += amount;
-			continue;
-		}
+    while (*format != '\0') {
+        size_t maxrem = INT_MAX - written;
+        if (!maxrem) {
+            // TODO: Set errno to EOVERFLOW.
+            return -1;
+        }
 
-		const char* format_begun_at = format++;
+        if (format[0] != '%' || format[1] == '%') {
+            if (format[0] == '%')
+                format++;
+            size_t amount = 1;
+            while (format[amount] && format[amount] != '%')
+                amount++;
+            if (maxrem < amount) {
+                // TODO: Set errno to EOVERFLOW.
+                return -1;
+            }
+            if (!ctx->_print(ctx->_that, format, amount))
+                return -1;
+            format += amount;
+            written += amount;
+        }
 
-		if (*format == 'c') {
-			format++;
-			char c = (char) va_arg(parameters, int /* char promotes to int */);
-			if (!maxrem) {
-				// TODO: Set errno to EOVERFLOW.
-				return -1;
-			}
-			if (!ctx->_print(ctx->_that, &c, sizeof(c)))
-				return -1;
-			written++;
-		} else if (*format == 's') {
-			format++;
-			const char* str = va_arg(parameters, const char*);
-			size_t len = strlen(str);
-			if (maxrem < len) {
-				// TODO: Set errno to EOVERFLOW.
-				return -1;
-			}
-			if (!ctx->_print(ctx->_that, str, len))
-				return -1;
-			written += len;
-		}
-		else if (format[0] == 'd' || format[0] == 'i' || format[0] == 'l') 
+        const char* format_begun_at = format++;
+
+        //TODO: parsing, but ignoring
+        char flag = 0;
+        if (format[0] == '+' || format[0] == '-' || format[0] == ' ' || format[0] == '0' || format[0] == '#')
         {
-            // [l[l]]d
-            long d;
-            if (format[0] == 'd' || format[0] == 'i')
+            flag = *format++;
+        }
+        (void)flag;
+        
+        //TODO: parsing, but ignoring
+        int width = 0;
+        int pow10 = 1;
+        while (format[0] >= '0' && format[0] <= '9')
+        {
+            width += (*format - '0') * pow10;
+            pow10 *= 10;
+            ++format;
+        }
+        //TODO: parsing, but ignoring
+        int precision = 0;
+        if (format[0] == '.')
+        {
+            ++format;
+            pow10 = 1;
+            while (format[0] >= '0' && format[0] <= '9')
             {
-                d = (long)va_arg(parameters, int);
+                precision += (*format - '0') * pow10;
+                pow10 *= 10;
                 ++format;
             }
-            else
+        }
+
+        //TODO: parsed, but only l is handled
+        char length[2] = { 0,0 };
+        if (format[0] == 'h' || format[0] == 'l' || format[0] == 'L' || format[0] == 'z' || format[0] == 'j' || format[0] == 't')
+        {
+            length[0] = *format++;
+            if (format[0] == 'h' || format[0] == 'l')
+                length[1] = *format++;
+        }
+
+        char type = *format++;
+
+        switch (type)
+        {
+        case 'c':
+        {
+            char c = (char)va_arg(parameters, int);
+            if (!ctx->_print(ctx->_that, &c, sizeof(c)))
+                return -1;
+            written++;
+        }
+        break;
+        case 's':
+        {
+            const char* str = va_arg(parameters, const char*);
+            size_t len = strlen(str);
+            if (maxrem < len) {
+                // TODO: Set errno to EOVERFLOW.
+                return -1;
+            }
+            if (!ctx->_print(ctx->_that, str, len))
+                return -1;
+            written += len;
+        }
+        break;
+        case 'd':
+        case 'i':
+        {
+            if (length[0] == 'l')
             {
-                ++format;
-                if (format[0] == 'l')
+                if (length[1] == 'l')
                 {
-                    //zzz:
-                    d = (long)va_arg(parameters, long long);
-                    ++format;
+                    long long d = va_arg(parameters, long long);
+                    written += printdecimal(ctx, d, 0);
                 }
                 else
                 {
-                    d = (long)va_arg(parameters, long);
+                    long d = va_arg(parameters, long);
+                    written += printdecimal(ctx, d, 0);
                 }
-                // strictly correct but the form %l[l] is often used without d or i
-                if (format[0] == 'd' || format[0] == 'i')
-                    ++format;
             }
-
-            if (!maxrem)
-                return -1;
-
-            written += printdecimal(ctx, d);
+            else
+            {
+                int d = va_arg(parameters, int);
+                written += printdecimal(ctx, d, 0);
+            }
         }
-		else if (*format == 'x') {
-			format++;
-			long d;
-			d = (long) va_arg(parameters, int);
-			if(!maxrem)
-				return -1;
-			
-			written += printhex(ctx, d);
-		}
-		 else {
-			format = format_begun_at;
-			size_t len = strlen(format);
-			if (maxrem < len) {
-				// TODO: Set errno to EOVERFLOW.
-				return -1;
-			}
-			if (!ctx->_print(ctx->_that, format, len))
-				return -1;
-			written += len;
-			format += len;
-		}
-	}
-	return written;
+        break;
+        case 'u':
+        {
+            if (length[0] == 'l')
+            {
+                if (length[1] == 'l')
+                {
+                    unsigned long long d = va_arg(parameters, unsigned long long);
+                    written += printdecimal(ctx, d, 1);
+                }
+                else
+                {
+                    unsigned long d = va_arg(parameters, unsigned long);
+                    written += printdecimal(ctx, d, 1);
+                }
+            }
+            else
+            {
+                unsigned int d = va_arg(parameters, unsigned int);
+                written += printdecimal(ctx, d, 1);
+            }
+        }
+        break;
+        case 'x':
+        {
+            if (length[0] == 'l')
+            {
+                if (length[1] == 'l')
+                {
+                    unsigned long long d = va_arg(parameters, unsigned long long);
+                    written += printhex(ctx, d);
+                }
+                else
+                {
+                    unsigned long d = va_arg(parameters, unsigned long);
+                    written += printhex(ctx, d);
+                }
+            }
+            else
+            {
+                unsigned int d = va_arg(parameters, unsigned int);
+                written += printhex(ctx, d);
+            }
+        }
+        break;
+        case 'b':
+        {
+            if (length[0] == 'l')
+            {
+                if (length[1] == 'l')
+                {
+                    unsigned long long d = va_arg(parameters, unsigned long long);
+                    written += printbin(ctx, d);
+                }
+                else
+                {
+                    unsigned long d = va_arg(parameters, unsigned long);
+                    written += printbin(ctx, d);
+                }
+            }
+            else
+            {
+                unsigned int d = va_arg(parameters, unsigned int);
+                written += printbin(ctx, d);
+            }
+        }
+        break;
+        case 'f':
+        {
+            //TODO: print float of width.precision
+            float f = (float)va_arg(parameters, double);
+            written += printdecimal(ctx, (long long)f, 0);
+        }
+        break;
+        default:
+        {
+            format = format_begun_at;
+            size_t len = strlen(format);
+            if (maxrem < len) {
+                // TODO: Set errno to EOVERFLOW.
+                return -1;
+            }
+            if (!ctx->_print(ctx->_that, format, len))
+                return -1;
+            written += len;
+            format += len;
+        }
+        break;
+        }
+    }
+    return written;
 }
 
 // ================================================================================================================

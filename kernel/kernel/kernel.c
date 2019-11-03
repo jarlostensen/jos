@@ -174,16 +174,16 @@ void _k_main()
     }    
     printf("ok, we're at %dms\n", ms);
     
-    ms = k_get_ms_since_boot();
-    printf("waiting for one 1/18 period...");
-    uint32_t ms_start = k_get_ms_since_boot();
-    uint64_t rdtsc_start = __rdtsc();
-    k_wait_oneshot_one_period();
-    uint64_t rdtsc_end = __rdtsc();
-    ms = k_get_ms_since_boot();
-    const uint64_t cycles = rdtsc_end - rdtsc_start;
-    const uint64_t elapsed_ms = ms-ms_start;
-    printf("%lld ms and %lld cycles elapsed ): %lld MHz\n", elapsed_ms, cycles, (cycles/elapsed_ms)/1000);
+    uint64_t cpu_freq = _k_clock_est_cpu_freq();
+    printf("CPU clocked to %lld MHz\n", cpu_freq/1000000);
+
+    const uint64_t ms_to_wait = 2;
+    printf("rdtsc timer wait for %lld @ %lld...", ms_to_wait, k_get_ms_since_boot());
+    uint64_t rdtsc_end = __rdtsc() + (cpu_freq * ms_to_wait + 500)/1000;
+    while(__rdtsc() <= rdtsc_end)
+        k_pause();
+    
+    printf("now = %lld", k_get_ms_since_boot());
 
     JOS_KTRACE("halting\n");
     k_panic();

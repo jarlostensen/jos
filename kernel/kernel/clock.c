@@ -54,6 +54,12 @@ uint64_t k_get_ms_since_boot()
     return _k_ms_elapsed;
 }
 
+
+uint64_t k_clock_get_ms_res()
+{
+    return (uint64_t)_k_clock_freq_whole<<32 | (uint64_t)_k_clock_freq_frac;
+}
+
 void k_wait_oneshot_one_period()
 {
     k_outb(PIT_COMMAND, PIT_COUNTER_2 | PIT_MODE_ONESHOT);
@@ -70,6 +76,29 @@ void k_wait_oneshot_one_period()
         k_inb(PIT_DATA_2);
         msb = k_inb(PIT_DATA_2);
     } while(msb);
+}
+
+uint64_t _k_clock_est_cpu_freq()
+{
+    // not sure what the right number should be?
+    int tries = 3;
+    //NOTE: this is assuming the 18 Hz standard clock used
+    const uint64_t elapsed_ms = 55;
+    uint64_t min_cpu_hz = ~(uint64_t)0;
+    uint64_t max_cpu_hz = 0;
+    do
+    {
+        uint64_t rdtsc_start = __rdtsc();
+        k_wait_oneshot_one_period();
+        uint64_t rdtsc_end = __rdtsc();
+        const uint64_t cpu_hz = 1000*(rdtsc_end - rdtsc_start)/elapsed_ms;
+        if(cpu_hz < min_cpu_hz)
+            min_cpu_hz = cpu_hz;
+        if(cpu_hz > max_cpu_hz)
+            max_cpu_hz = cpu_hz;
+    } while(tries--);
+
+    return (max_cpu_hz + min_cpu_hz)/2;
 }
 
 void k_clock_init()
@@ -89,7 +118,7 @@ void k_clock_init()
     _k_clock_freq_frac = (uint32_t)(scaled & 0x00000000ffffffff);
     _k_ms_elapsed = 0;
 
-    JOS_KTRACE("k_init_clock: starting PIT for %d HZ with divider %d\n", HZ, (int)div16);
+    JOS_KTRACE("k_init_clock: starting PIT for %d HZ with divider %d, resolution is %d.%d\n", HZ, (int)div16, _k_clock_freq_whole, _k_clock_freq_frac);
 
     // run once to initialise counters
     _k_update_clock();
