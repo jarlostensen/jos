@@ -11,9 +11,6 @@
 // max supported basic and extended
 static unsigned int _max_basic_cpuid = 0;
 static unsigned int _max_extended_cpuid = 0;
-//TODO:static int _has_fpu = 0;
-
-
 
 void k_cpu_init()
 {    

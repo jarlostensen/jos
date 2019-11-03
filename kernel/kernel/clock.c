@@ -89,7 +89,7 @@ void k_clock_init()
     _k_clock_freq_frac = (uint32_t)(scaled & 0x00000000ffffffff);
     _k_ms_elapsed = 0;
 
-    printf("k_init_clock: starting PIT for %d HZ with divider %d...", HZ, (int)div16);
+    JOS_KTRACE("k_init_clock: starting PIT for %d HZ with divider %d\n", HZ, (int)div16);
 
     // run once to initialise counters
     _k_update_clock();
@@ -103,6 +103,4 @@ void k_clock_init()
     // start the clock IRQ
     k_set_irq_handler(0,clock_irq_handler);
     k_enable_irq(0);
-
-    printf("ok\n");
 }
