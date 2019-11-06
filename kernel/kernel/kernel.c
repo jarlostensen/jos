@@ -105,16 +105,16 @@ void _k_init(uint32_t magic, multiboot_info_t *mboot)
 {       
     k_tty_initialize();
     k_tty_disable_cursor();    
+    k_serial_init();
 
-    printf("_k_init...");
+    JOS_KTRACE("_k_init\n");
     if(magic!=MULTIBOOT_BOOTLOADER_MAGIC)
     {
-        printf("FAIL, not loaded with multiboot!\n");
+        JOS_KTRACE("error: not loaded with multiboot!\n");
         k_panic();
     }
     else
     {
-        printf("multiboot detected\n");
         if(mboot->flags & MULTIBOOT_INFO_MEMORY)
         {
             printf("\tmem_lower = %d KB, mem_upper = %d KB\n", mboot->mem_lower, mboot->mem_upper);
@@ -133,16 +133,12 @@ void _k_init(uint32_t magic, multiboot_info_t *mboot)
             }
             if(!has_available)
             {
-                printf("\nERROR: no available RAM\n");
+                JOS_KTRACE("error: no available RAM\n");
                 k_panic();
             }
         }
-    }
-    printf("ok\n");
-    k_serial_init();
-    // 
-    k_serial_flush(kCom1);
-    _k_alloc_init();
+    }    
+    k_alloc_init();
     k_cpu_init();        
 }
 

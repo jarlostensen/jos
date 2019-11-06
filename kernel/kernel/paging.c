@@ -73,7 +73,7 @@ uint32_t k_virt_to_phys(pd_handle_t pd_, uint32_t virt)
 
 page_table_t* _alloc_page_table()
 {
-    page_table_t* pt = (page_table_t*)_k_alloc(sizeof(page_table_t)*1024, kAlign4k);
+    page_table_t* pt = (page_table_t*)k_alloc(sizeof(page_table_t)*1024, kAlign4k);
     memset(pt,0,sizeof(page_table_t)*1024);
     return pt;
 }
@@ -103,7 +103,7 @@ uint32_t _get_frame(pd_handle_t pd_, uint32_t virt)
     {
         //printf("\tpage frame not present, allocating...");
         // allocate a new 4K frame
-        void* frame = _k_alloc(0x1000, kAlign4k);
+        void* frame = k_alloc(0x1000, kAlign4k);
         memset(frame,0,0x1000);
         pt->_phys_address = (uint32_t)frame >> 12;
         pt->_present = 1;
@@ -132,7 +132,7 @@ void _k_page_fault_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
 void k_paging_init()
 {   
     JOS_KTRACE("k_paging_init\n");
-    _k_page_dir = (page_directory_t*)_k_alloc(sizeof(page_directory_t)*1024, kAlign4k);    
+    _k_page_dir = (page_directory_t*)k_alloc(sizeof(page_directory_t)*1024, kAlign4k);    
     memset(_k_page_dir, 0, sizeof(sizeof(page_directory_t)*1024));
     page_table_t* pt = _alloc_page_table();
     _k_page_dir->_phys_address = (uint32_t)pt >> 12;

@@ -27,8 +27,8 @@ typedef enum alignment_enum
     kAlign512 = 64,
     kAlign4k = 0x1000,
 } alignment_t;
-void* _k_alloc(size_t bytes, alignment_t alignment);
-void _k_alloc_init();
+void* k_alloc(size_t bytes, alignment_t alignment);
+void k_alloc_init();
 
 //TODO: read current NMI status + CMOS management 
 // non-maskable int enable

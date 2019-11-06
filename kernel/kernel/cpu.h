@@ -15,7 +15,7 @@ typedef enum cpu_feature_enum
     kCpuFeature_PAE = 0x40,
     kCpuFeature_APIC = 0x100,
     kCpuFeature_SEP = 0x400,
-    kCpuFeature_ACPI = 0x200000,    
+    kCpuFeature_ACPI = 0x200000,
 } cpu_feature_t;
 
 void k_cpu_init();
