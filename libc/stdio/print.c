@@ -210,9 +210,12 @@ int _vprint_impl(_printf_ctx_t* ctx, const char* __restrict format, va_list para
                 // TODO: Set errno to EOVERFLOW.
                 return -1;
             }
-            if (!ctx->_print(ctx->_that, str, len))
-                return -1;
-            written += len;
+            if(len)
+            {
+                if (!ctx->_print(ctx->_that, str, len))
+                    return -1;
+                written += len;
+            }
         }
         break;
         case 'd':
@@ -385,6 +388,11 @@ static int buffer_print(void *ctx_, const char* data, size_t length)
 
 int sprintf(char * __restrict buffer, const char * __restrict format, ... )
 {
+    if(!buffer || !format || !format[0])
+    {
+        return 0;
+    }
+
 	va_list parameters;
 	va_start(parameters, format);
     int written = _vprint_impl(&(_printf_ctx_t) { 
@@ -422,6 +430,9 @@ static int buffer_n_print(void *ctx_, const char* data, size_t length)
 
 int snprintf ( char * buffer, size_t n, const char * format, ... )
 {
+    if(!buffer || !n || !format || !format[0])
+        return 0;
+
     va_list parameters;
 	va_start(parameters, format);
     int written = _vprint_impl(&(_printf_ctx_t) {
@@ -438,6 +449,9 @@ int snprintf ( char * buffer, size_t n, const char * format, ... )
 
 int vsnprintf(char* buffer, size_t n, const char* format, va_list parameters)
 {
+    if(!buffer || !n || !format || !format[0])
+        return 0;
+
     int written = _vprint_impl(&(_printf_ctx_t) {
         ._print = buffer_n_print,
             ._putchar = buffer_n_putchar,

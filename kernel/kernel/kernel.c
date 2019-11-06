@@ -140,6 +140,8 @@ void _k_init(uint32_t magic, multiboot_info_t *mboot)
     }
     printf("ok\n");
     k_serial_init();
+    // 
+    k_serial_flush(kCom1);
     _k_alloc_init();
     k_cpu_init();        
 }
