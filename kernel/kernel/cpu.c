@@ -14,6 +14,7 @@ static unsigned int _max_basic_cpuid = 0;
 static unsigned int _max_extended_cpuid = 0;
 static char _vendor_string[32] = {0};
 
+// These things are from the ancient Intel MultiProcessor Specification
 // multi processor floating pointer structure
 // found in memory by scanning (see _smp_init)
 typedef struct smp_fp_struct
@@ -29,7 +30,42 @@ typedef struct smp_fp_struct
     uint8_t     _reserved[3];
 } __attribute__((packed)) smp_fp_t;
 
-static smp_fp_t *_smp_fp = 0;
+typedef struct smp_config_header_struct
+{
+    uint32_t    _sig;
+    uint16_t    _bt_length;
+    uint8_t     _specrev;
+    uint8_t     _checksum;
+    uint8_t     _oem_id[20];
+    uint32_t    _oem_table_ptr;
+    uint16_t    _oem_table_size;
+    uint16_t    _oem_entry_count;
+    uint32_t    _local_apic;
+    uint16_t    _ext_length;
+    uint8_t     _ext_checksum;
+    uint8_t     _reserved;
+} __attribute__((packed)) smp_config_header_t;
+
+typedef struct smp_processor_struct
+{
+    uint8_t     _type;
+    uint8_t     _local_apic_id;
+    uint8_t     _local_apic_version;
+    uint8_t     _flags;
+    uint32_t    _cpu_sig;
+    uint32_t    _feature_flags;
+    uint32_t    _reserved[2];
+} __attribute__((packed)) smp_processor_t;
+
+typedef struct smp_bus_struct
+{
+    uint8_t     _type;
+    uint8_t     _bus_id;
+    uint8_t     _type_string[6];
+} __attribute__((packed)) smp_bus_t;
+
+static const smp_fp_t *_smp_fp = 0;
+static const smp_config_header_t * _smp_config = 0;
 
 static void _smp_init()
 {    
@@ -53,16 +89,78 @@ static void _smp_init()
                 JOS_KTRACE("found invalid MPF structure @ 0x%x\n", rp);
                 // die?
             }
-            // skip MP structure size (16 bytes)
-            rp = (uint32_t*)((uint8_t*)rp + 0x10);
+            // skip MP structure size
+            rp = (uint32_t*)((uint8_t*)rp + sizeof(smp_fp_t));
         }        
         return 0;
     }
 
-    // look for SMP signature in candiate RAM regions
+    // look for SMP signature in candidate RAM regions
     if(scan(0,0x400) || scan(639 * 0x400, 0x400) || scan(0xf0000,0x10000))
     {        
-        //TODO: found MP tag, parse structures
+        if(!_smp_fp->_feature_information)
+        {
+            static const uint32_t kPmpTag = (('P'<<24) | ('M'<<16) | ('C'<<8) | 'P');
+            // MP configuration table is present
+            _smp_config = (const smp_config_header_t*)_smp_fp->_phys_address;
+            if(_smp_config->_sig==kPmpTag)
+            {
+                JOS_KTRACE("MP configuration table @ 0x%x with %d entries\n", _smp_config,_smp_config->_oem_entry_count);
+                JOS_KTRACE_BUF(_smp_config->_oem_id, sizeof(_smp_config->_oem_id)); 
+
+                // the OEM entries follow the configuration header
+                const uint8_t* oem_entry_ptr = (const uint8_t*)(_smp_config+1);
+                for(uint16_t n =0; n < _smp_config->_oem_entry_count; n++ )
+                {
+                    switch (oem_entry_ptr[0])
+                    {
+                        case 0:
+                        {
+                            // processor
+                            const smp_processor_t* smp_proc = (const smp_processor_t*)oem_entry_ptr;
+                            JOS_KTRACE("processor %s\n", smp_proc->_flags & 1 ? "boot":"not-boot");
+                            oem_entry_ptr += sizeof(smp_processor_t);
+                        }
+                        break;
+                        case 1:
+                        {
+                            // bus
+                            const smp_bus_t* smp_bus = (const smp_bus_t*)oem_entry_ptr;
+                            JOS_KTRACE("bus %d\n");
+                            JOS_KTRACE_BUF(smp_bus->_type_string, 6);
+                            oem_entry_ptr += sizeof(smp_bus_t);
+                        }
+                        break;
+                        case 2:
+                        {
+                            // I/O apic
+                            JOS_KTRACE("I/O apic\n");
+                            oem_entry_ptr += 8;
+                        }
+                        break;
+                        case 3:
+                        {
+                            // I/O int assignment
+                            JOS_KTRACE("I/O int assignment\n");
+                            oem_entry_ptr += 8;
+                        }
+                        break;
+                        case 4:
+                        {
+                            // local int assignment
+                            JOS_KTRACE("local int assignment\n");
+                            oem_entry_ptr += 8;
+                        }
+                        break;
+                        default:;
+                    }
+                }
+            }                        
+        }
+        else
+        {
+            JOS_KTRACE("TODO: default configurations\n");
+        }
     }
     else
     {    

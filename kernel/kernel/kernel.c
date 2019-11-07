@@ -107,6 +107,9 @@ void _k_init(uint32_t magic, multiboot_info_t *mboot)
     k_tty_disable_cursor();    
     k_serial_init();
 
+    printf("=============================================\n");
+    printf("This is the jOS kernel\n\n");
+
     JOS_KTRACE("_k_init\n");
     if(magic!=MULTIBOOT_BOOTLOADER_MAGIC)
     {
@@ -117,7 +120,7 @@ void _k_init(uint32_t magic, multiboot_info_t *mboot)
     {
         if(mboot->flags & MULTIBOOT_INFO_MEMORY)
         {
-            printf("\tmem_lower = %d KB, mem_upper = %d KB\n", mboot->mem_lower, mboot->mem_upper);
+            JOS_KTRACE("mem_lower = %d KB, mem_upper = %d KB\n", mboot->mem_lower, mboot->mem_upper);
             bool has_available = false;
             for (multiboot_memory_map_t* mmap = (multiboot_memory_map_t *) mboot->mmap_addr; 
                 (unsigned long) mmap <mboot->mmap_addr + mboot->mmap_length; 
@@ -125,11 +128,11 @@ void _k_init(uint32_t magic, multiboot_info_t *mboot)
             {
                 if(mmap->type == MULTIBOOT_MEMORY_AVAILABLE)
                 {
-                    printf ("\tavailable 0x%x bytes @ 0x%x\n",
+                    JOS_KTRACE("available 0x%x bytes @ 0x%x\n",
                             (unsigned) mmap->len,
                             (unsigned) mmap->addr);
                     has_available = true;
-                }                
+                }
             }
             if(!has_available)
             {

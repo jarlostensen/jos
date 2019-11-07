@@ -34,4 +34,7 @@ inline uint64_t __rdtsc()
 void _k_trace(const char* msg,...);
 #define JOS_KTRACE(msg,...) _k_trace(msg,##__VA_ARGS__)
 
+void _k_trace_buf(const void* data, size_t length);
+#define JOS_KTRACE_BUF(data,length) _k_trace_buf(data, length)
+
 #endif // JOS_KERNEL_H
