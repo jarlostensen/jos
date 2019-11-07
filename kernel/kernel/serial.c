@@ -66,7 +66,7 @@ void k_serial_flush(short port)
 void k_serial_write(short port, const char* data, size_t len)
 {
     JOS_ASSERT(port==kCom1 || port==kCom2);
-    while(data && len)
+    while(data[0] && len)
     {
         k_serial_putch(port, *data++, 1);
         len--;

@@ -13,7 +13,7 @@ void _k_trace(const char* format,...)
     va_list parameters;
     va_start(parameters, format);
     int written = snprintf(buffer, sizeof(buffer), "[%lld] ", k_get_ms_since_boot());
-    vsnprintf(buffer+written, sizeof(buffer)-written, format, parameters);
+    written += vsnprintf(buffer+written, sizeof(buffer)-written, format, parameters);
     va_end(parameters);
-    k_serial_write(kCom1, buffer, strlen(buffer));
+    k_serial_write(kCom1, buffer, written);
 }

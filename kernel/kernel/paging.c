@@ -4,10 +4,12 @@
 #include "interrupts.h"
 #include "kernel_detail.h"
 #include "paging.h"
+#include "cpu.h"
 #include <stdio.h>
 #include <string.h>
 
 // https://wiki.osdev.org/Paging
+// NOTE: these are really just different views on the same 32(64)-bit data.
 
 struct page_directory_struct 
 {
@@ -40,6 +42,54 @@ struct page_table_struct
     uint32_t    _phys_address:20;
 }  __attribute__((packed));
 typedef struct page_table_struct page_table_t;
+
+// ========================================= 
+// long mode page structures
+// see for example https://en.wikipedia.org/wiki/X86-64#Virtual_address_space_details
+// and Intel IA Dev Guide Vol. 3A 4-19
+// 
+// we have four levels of page tables:
+// * Page-Map Level-4 Table (PML4)
+// * Page-Directory Pointer Table (PDP)
+// * Page-Directory Table (PD)
+// * Page Table (PT).
+// 
+//NOTE: never set in PT or PML4, 1 Gig pages if set in PDP, 2MB if set in PD
+    
+// Intel IA Dev Guide Vol. 3A Table 4-14
+struct pml4_struct 
+{
+    uint8_t     _present : 1;
+    uint8_t     _read_write:1;
+    uint8_t     _user:1;
+    uint8_t     _write_through:1;
+    uint8_t     _cache_disable:1;
+    uint8_t     _accessed:1;
+    uint8_t     _zero:6;
+    // NOTE: 39 bits
+    uint32_t    _pdp_1;
+    uint8_t     _pdp_2:7;
+    uint16_t    _zero_2:12;
+    uint8_t     _no_execute:1;
+}  __attribute__((packed));
+typedef struct pml4_struct pml4_t;
+
+struct page_table_lm_struct 
+{
+    uint8_t     _present : 1;
+    uint8_t     _read_write:1;
+    uint8_t     _user:1;
+    uint8_t     _write_through:1;
+    uint8_t     _cached:1;
+    uint8_t     _accessed:1;
+    uint8_t     _dirty:1;
+    uint8_t     _zero:1;
+    uint8_t     _global:1;
+    uint8_t     _system:3;
+    uint32_t    _phys_address:20;
+    uint8_t     _no_execute:1;
+}  __attribute__((packed));
+typedef struct page_table_lm_struct page_table_lm_t;
 
 static const size_t kFrameSize = 0x1000;
 static const size_t kPageDirEntryRange = 0x400000;
@@ -132,6 +182,20 @@ void _k_page_fault_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
 void k_paging_init()
 {   
     JOS_KTRACE("k_paging_init\n");
+
+    unsigned int _eax = 0, _ebx, _ecx, _edx = 0;
+    __get_cpuid(0x1, &_eax, &_ebx, &_ecx, &_edx);
+    if( (_edx & (1<<3)) == (1<<3))
+    {
+        JOS_KTRACE("4MB pages supported\n");
+    }
+    
+    __get_cpuid(0x80000001, &_eax, &_ebx, &_ecx, &_edx);
+    if( (_edx & (1<<26)) == (1<<26))
+    {
+        JOS_KTRACE("1Gig pages supported\n");
+    }
+    
     _k_page_dir = (page_directory_t*)k_alloc(sizeof(page_directory_t)*1024, kAlign4k);    
     memset(_k_page_dir, 0, sizeof(sizeof(page_directory_t)*1024));
     page_table_t* pt = _alloc_page_table();

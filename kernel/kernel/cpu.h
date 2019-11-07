@@ -22,4 +22,7 @@ void k_cpu_init();
 
 bool k_cpu_feature_present(cpu_feature_t feature);
 
+// returns the highest extended function number supported by this CPU
+unsigned int k_cpuid_max_extended();
+
 #endif // JOS_CPU_H
