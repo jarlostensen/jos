@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include "../include/kernel/kernel.h"
 
 int k_is_protected_mode();
