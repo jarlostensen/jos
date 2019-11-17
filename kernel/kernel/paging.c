@@ -166,7 +166,8 @@ static void _page_fault_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
     printf("new frame allocated at 0x%x\n", phys);    
 }
 
-static void _init_l4_paging()
+//WIP:
+__attribute__((unused)) static void _init_l4_paging() 
 {
     // l4
     _k_page_l4_dir = (pml4_t*)k_alloc(sizeof(pml4_t)*512, kAlign4k);
@@ -258,8 +259,6 @@ void k_paging_init()
         _1gig_pages_supported = true;
     }
     
-    //zzz:
-    _init_l4_paging();
-
+    
     _init_32bit_paging();
 }
