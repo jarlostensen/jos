@@ -14,19 +14,6 @@ real_mode_idt:
 
 section .text
 
-global k_bios_call:function
-; k_bios_call(int_num, ax, bx, cx, dx, si, di)
-k_bios_call:
-    push ebp
-    mov ebp, esp
-    pushad
-
-    ; TODO: https://wiki.osdev.org/Real_Mode
-
-    pop ebp
-    popad
-    ret
-
 ; returns 1 if protected mode enabled (PE bit in CR0)
 global k_is_protected_mode:function
 k_is_protected_mode:

@@ -61,8 +61,8 @@ $(ARCHDIR)/crtn.o \
 
 all: jos.kernel
 
-jos.kernel: $(OBJS) $(ARCHDIR)/link.ld
-	$(CC) -T $(ARCHDIR)/link.ld -o $@ $(CFLAGS) $(LINK_LIST)
+jos.kernel: $(OBJS) $(ARCHDIR)/link_high.ld
+	$(CC) -T $(ARCHDIR)/link_high.ld -o $@ $(CFLAGS) $(LINK_LIST)
 	grub-file --is-x86-multiboot jos.kernel
 
 $(ARCHDIR)/crtbegin.o $(ARCHDIR)/crtend.o:

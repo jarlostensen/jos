@@ -101,8 +101,8 @@ static void irq_1_handler(int irq)
     printf("\tIRQ %d handler, keyboard\n", irq);
 }
 
-void _k_init(uint32_t magic, multiboot_info_t *mboot)
-{       
+void _k_main(uint32_t magic, multiboot_info_t *mboot)
+{    
     k_tty_initialize();
     k_tty_disable_cursor();    
     k_serial_init();
@@ -143,11 +143,6 @@ void _k_init(uint32_t magic, multiboot_info_t *mboot)
     }    
     k_alloc_init();
     k_cpu_init();        
-}
-
-void _k_main()
-{    
-    JOS_KTRACE("_kmain, booting\n");
 
     _k_init_isrs();    
     k_set_irq_handler(1, irq_1_handler);

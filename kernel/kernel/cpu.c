@@ -109,6 +109,11 @@ static void _smp_init()
                 JOS_KTRACE_BUF(_smp_config->_oem_id, sizeof(_smp_config->_oem_id)); 
 
                 // the OEM entries follow the configuration header
+                // do a pass over these to count them first
+                //size_t processor_count = 0;
+                //size_t bus_count = 0;
+                //size_t io_apic = 0;
+                                                
                 const uint8_t* oem_entry_ptr = (const uint8_t*)(_smp_config+1);
                 for(uint16_t n =0; n < _smp_config->_oem_entry_count; n++ )
                 {
