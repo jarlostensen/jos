@@ -53,9 +53,13 @@ section .rodata
 
 section .text
 
-; C-code kernel init and main, called with one parameter pointing to multiboot structure
-extern _k_init
+; void _k_main(uint32_t magic, multiboot_info_t *mboot)
 extern _k_main
+
+; used to store away multiboot arguments
+main_args:
+    dd  0
+    dd  0
 
 ; these are defined in linker_high.ld
 extern _k_phys_start
@@ -63,33 +67,69 @@ extern _k_virtual_start
 extern _k_virtual_end
 extern _k_phys_end
 
+; -----------------------------------------------------------------------
+; helpers
+
 ; eax = virt
-; returns phys in eax
-_virt_to_phys:
-        push edi
+; -> ebx = page table entry or 0
+_virt_to_page_table_entry:
+        push eax
         push edx
         push ecx
 
-        lea edi,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]
+        lea ebx,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]
         mov ecx, 400000h
         xor edx, edx
-        idiv ecx
-        shl eax,2           ; eax / 4
-        add edi, eax
-        mov ecx, [edi]      ; ecx = page table entry
-        shr edx, 2          ; remainder / 4
-        add edx, ecx        ; offset in page table
-        mov eax, [edx]      ; get entry
-        test eax,1          ; present?
-        jnz .virt_to_phys_end        
-        xor eax,eax
-    .virt_to_phys_end:
-        
+        idiv ecx            ; eax = virt / 4Megs = page directory entry, edx = rem
+        shl eax,2           ; eax = 4*eax; byte offset        
+        add ebx, eax        ; edi = offset into page directory 
+        mov eax, [ebx]      ; edi = page table entry
+        test eax, 1         ; is it valid?
+        jz .invalid
+
+        and eax, 0xfffff000 ; mask out flags
+        mov ebx, eax
+
+        mov eax, edx        ; eax = remainder, offset in 4Meg region
+        xor edx,edx 
+        mov ecx, 1000h      
+        idiv ecx            ; eax = page table entry, edx = rem = byte offset from physical address
+        shl eax, 2          ; eax = 4*eax; byte offset
+        add ebx, eax        ; edi = physical address of page table entry
+        jmp .done
+
+    .invalid:
+        xor ebx,ebx
+    .done:
         pop ecx
         pop edx
-        pop edi
+        pop eax
         ret
 
+; eax = virt
+; -> eax = phys or 0
+_virt_to_phys:
+        push ebx
+        
+        ; map to the right page table
+        call _virt_to_page_table_entry
+        test ebx,ebx
+        jz .virt_to_phys_not_present
+
+        ; get the entry
+        mov eax, [ebx]
+        test eax,1          ; present?
+        jnz .virt_to_phys_end
+    .virt_to_phys_not_present:
+        xor eax,eax
+    .virt_to_phys_end:
+        and eax, 0xfffff000
+        
+        pop ebx
+        ret
+
+; -----------------------------------------------------------------------
+; 
 global _start:function (_start.end - _start)
 _start:                
         ; safety check against being loaded in a non-multiboot way
@@ -104,15 +144,15 @@ _start:
         mov ebp, stack_top
         mov esp, ebp
         ; store these for later, when we call main
-        ; note: this is the LMA, not the VMA, so when we're "high kernel" it will still be 0x100000
-        push ebx
-        push eax
-        ;NOTE: don't push anything else on here without correcting for it, we rely on it when calling _k_main later!
-
+        ; note: ebx is the LMA and will point somewhere in <1Meg RAM
+        mov [main_args- KERNEL_VMA_OFFSET], ebx
+        mov [(main_args+4) - KERNEL_VMA_OFFSET], eax
+        
         ; --------------------------------------------
         ; set up the initial page mapping from 0->0
         ; --------------------------------------------
-        ; identity map the first meg
+        ; identity map the first meg in boot_page_table_0
+
         lea edi,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]       ; edi = physical address of boot_page_directory
         lea esi,[dword (boot_page_table_0 -  KERNEL_VMA_OFFSET)]          ; esi = physical address of boot_page_table_0
         mov edx, esi
@@ -133,7 +173,9 @@ _start:
 
         ; --------------------------------------------
         ; set up the kernel mapping from KERNEL_VMA->0x100000
-        ; --------------------------------------------        
+        ; --------------------------------------------       
+        ; map kernel into boot_page_table_1
+
         lea ecx,[dword _k_virtual_end]
         sub ecx,dword _k_virtual_start                                  ; ecx = size of kernel
         mov edx, ecx
@@ -143,15 +185,21 @@ _start:
         inc ecx
     .map_kernel:
         ; we need to map ecx pages
-        
         add edi, 4*(KERNEL_VMA/400000h)     ; edi = physical address of page directory entry for the start of our kernel in virtual memory
+
+        ; calculate the offset into the page table for the kernel's virtual start address
         lea esi,[ dword (boot_page_table_1 -  KERNEL_VMA_OFFSET)]
-        mov edx, esi        
-        and edx, 0xfffff000
+        mov edx, _k_virtual_start
+        and edx, 3fffffh
+        shr edx, 12
+        shl edx, 2
+        add edx, esi
+        mov esi, edx
+
         or edx,1
-        mov [edi], edx                  ; entry for our kernel in the page directory now points to boot_page_table_1
-        
-        mov edx, _k_phys_start        
+        mov [edi], edx                  ; entry for our kernel in the page directory ->  boot_page_table_1[_k_virtual_start]
+
+        mov edx, _k_phys_start
     .map_kernel_page:
         mov ebx, edx
         or ebx,1
@@ -160,13 +208,7 @@ _start:
         add edx, 0x1000
         cmp edx, _k_phys_end
         jle .map_kernel_page
-
-        xchg bx,bx
-
-        mov eax, _k_virtual_start
-        call _virt_to_phys
-        add esp, 4
-
+        
         ; now switch on paging
         lea ebx, [dword(boot_page_directory - KERNEL_VMA_OFFSET)]
         mov cr3, ebx
@@ -175,10 +217,11 @@ _start:
         mov cr0, ebx
         jmp dword 10h:.high_half
     .high_half:
+        
+        ; at this point all kernel virtual addresses are valid through our mappings
 
         ; switch to our own GDT
         cli
-        ;NOTE: we have to adjust the virtual address here
         lgdt [dword _k_gdt_desc]
         mov eax, 10h
         mov ds, ax
@@ -199,8 +242,9 @@ _start:
         jmp dword 08h:.protected_mode
         nop
         nop    
-    .protected_mode:
-        ;NOTE: we're using ebx and eax that we pushed on the stack earlier
+    .protected_mode:        
+        push dword [main_args]              ; ebx = multiboot pointer
+        push dword [main_args+4]            ; eax = multiboot magic number
         call _k_main
         add esp, 2*4
 .fi:

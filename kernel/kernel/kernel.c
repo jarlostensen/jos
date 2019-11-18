@@ -141,6 +141,9 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
             }
         }
     }    
+    //TESTING: alloc init requires more paging setup
+    k_panic();
+
     k_alloc_init();
     k_cpu_init();        
 
