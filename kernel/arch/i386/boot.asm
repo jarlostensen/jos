@@ -8,8 +8,8 @@ MBFLAGS           equ MBALIGN | MBMEMINFO    ; multiboot flags
 MBCHECKSUM        equ  -(MBMAGIC + MBFLAGS)  ; calculate the checksum
 
 ;NOTE: always keep this up-to-date with the value in link_high.ld!
-KERNEL_VMA        equ 0x20100000             ; the virtual address of our "high" kernel @ 512 + 1Meg
-KERNEL_VMA_OFFSET equ 0x20000000             ; subtracting this from a virtual address gives us the 0-relative offset
+KERNEL_VMA        equ 0xc0100000             ; the virtual address of our "high" kernel 
+KERNEL_VMA_OFFSET equ 0xc0000000             ; subtracting this from a virtual address gives us the 0-relative offset
 
 section .multiboot
 global _mboot
@@ -31,20 +31,14 @@ section .bss
 align 16
     stack_bottom:
     resb 16384
-    stack_top:
+    _stack_top:
 
-; this is our boot page directory and table used to map our high kernel virtual addresses to physical memory.
+; this is our boot page directory used to map our high kernel virtual addresses to physical memory.
 ; the vritual address range starts at KERNEL_VMA and is mapped to offset 1Meg in physical RAM
 align 4096
     boot_page_directory:
     resb 4096
-    ; we'll use this to identity map the first 1Meg of physical space
-    boot_page_table_0:
-    resb 4096
-    ; we'll use this one to map the kernel itself
-    boot_page_table_1:
-    resb 4096
-
+    
 section .data
 extern _k_gdt_desc
 
@@ -55,6 +49,12 @@ section .text
 
 ; void _k_main(uint32_t magic, multiboot_info_t *mboot)
 extern _k_main
+
+;uint32_t _k_check_memory_availability(multiboot_info_t* mboot, uint32_t from_phys)
+extern  _k_check_memory_availability
+
+_k_phys_memory_available:
+    dd 0
 
 ; used to store away multiboot arguments
 main_args:
@@ -68,64 +68,82 @@ extern _k_virtual_end
 extern _k_phys_end
 
 ; -----------------------------------------------------------------------
-; helpers
 
-; eax = virt
-; -> ebx = page table entry or 0
-_virt_to_page_table_entry:
-        push eax
+global _k_frame_alloc_phys_ptr
+_k_frame_alloc_phys_ptr:
+    dd 0
+
+; initialise our simple linear frame allocator by making sure allocations 
+; are 4K aligned, starting at the end of the loaded kernel space
+_k_alloc_init:
+        push ebx
         push edx
-        push ecx
-
-        lea ebx,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]
-        mov ecx, 400000h
-        xor edx, edx
-        idiv ecx            ; eax = virt / 4Megs = page directory entry, edx = rem
-        shl eax,2           ; eax = 4*eax; byte offset        
-        add ebx, eax        ; edi = offset into page directory 
-        mov eax, [ebx]      ; edi = page table entry
-        test eax, 1         ; is it valid?
-        jz .invalid
-
-        and eax, 0xfffff000 ; mask out flags
-        mov ebx, eax
-
-        mov eax, edx        ; eax = remainder, offset in 4Meg region
-        xor edx,edx 
-        mov ecx, 1000h      
-        idiv ecx            ; eax = page table entry, edx = rem = byte offset from physical address
-        shl eax, 2          ; eax = 4*eax; byte offset
-        add ebx, eax        ; edi = physical address of page table entry
-        jmp .done
-
-    .invalid:
-        xor ebx,ebx
-    .done:
-        pop ecx
+        lea edx, [dword(_k_frame_alloc_phys_ptr - KERNEL_VMA_OFFSET)]
+        mov ebx,_k_phys_end
+        add ebx,0xfff
+        and ebx,~0xfff
+        mov [edx],ebx
         pop edx
+        pop ebx
+        ret
+
+; allocate a 4K frame and return it's physical address in ebx
+; also zeros out the contents of the frame. Update allocator.
+; ebx => physical frame
+_k_alloc_frame:
+        push eax
+        push ecx
+        push edi
+        lea edi, [dword(_k_frame_alloc_phys_ptr - KERNEL_VMA_OFFSET)]
+        mov ebx, [edi]
+        mov edi, ebx
+        
+        ; zero 400h dwords of memory
+        mov ecx, 0x400
+        xor eax,eax
+        rep stosd
+        ; advance _k_frame_alloc_phys_ptr by one frame
+        lea edi, [dword(_k_frame_alloc_phys_ptr - KERNEL_VMA_OFFSET)]
+        add dword [edi], 0x1000        
+        pop edi
+        pop ecx
         pop eax
         ret
 
 ; eax = virt
-; -> eax = phys or 0
+; -> ebx = physical address or 0
 _virt_to_phys:
-        push ebx
-        
-        ; map to the right page table
-        call _virt_to_page_table_entry
-        test ebx,ebx
-        jz .virt_to_phys_not_present
+        push eax
+        push edx
+        push ecx
 
-        ; get the entry
-        mov eax, [ebx]
-        test eax,1          ; present?
-        jnz .virt_to_phys_end
-    .virt_to_phys_not_present:
-        xor eax,eax
-    .virt_to_phys_end:
-        and eax, 0xfffff000
-        
-        pop ebx
+        mov ecx, eax
+        shr ecx, 22             ; / 400000h = page table entry index
+        and eax, 3fffffh        ; mod 400000h
+
+        lea ebx,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]
+        shl ecx, 2          ; to byte offset (page table entry)
+        add ebx, ecx        ; offset into page directory
+
+        mov ebx, [ebx]      ; page table entry
+        test ebx, 1
+        jz .invalid
+
+        and ebx, ~0fffh      ; mask out flags to get phys table address
+        shr eax, 12         ; / 1000h
+        shl eax, 2          ; byte offset of frame entry in page table
+        add ebx, eax        
+        mov ebx, [ebx]      ; page table entry (frame)
+        test ebx, 1
+        jnz .done
+
+    .invalid:
+        xor ebx,ebx
+    .done:
+        and ebx, ~0fffh
+        pop ecx
+        pop edx
+        pop eax
         ret
 
 ; -----------------------------------------------------------------------
@@ -136,29 +154,40 @@ _start:
         cmp eax, 2badb002h
         ;TODO: write something to screen
         jne .fi
-
+        
+        lea ebp, [dword (_stack_top - KERNEL_VMA_OFFSET)]
+        mov esp, ebp
+        
         ; the multiboot the machine state is as follows:
         ; https://www.gnu.org/software/grub/manual/multiboot/html_node/Machine-state.html#Machine-state
-
         cld
-        mov ebp, stack_top
-        mov esp, ebp
         ; store these for later, when we call main
         ; note: ebx is the LMA and will point somewhere in <1Meg RAM
-        mov [main_args- KERNEL_VMA_OFFSET], ebx
+        mov [main_args - KERNEL_VMA_OFFSET], ebx
         mov [(main_args+4) - KERNEL_VMA_OFFSET], eax
-        
-        ; --------------------------------------------
+
+        ; get amount of physical memory available in the region inlcuding our kernel and store it for later
+        push dword _k_phys_end 
+        push ebx
+        call _k_check_memory_availability
+        add esp, 4*2        
+        mov [_k_phys_memory_available-KERNEL_VMA_OFFSET], eax
+        ;TODO: check we've got at least some amount available
+
+        ; initialise our physical frame allocator
+        call _k_alloc_init
+
+        ;--------------------------------------
         ; set up the initial page mapping from 0->0
         ; --------------------------------------------
         ; identity map the first meg in boot_page_table_0
 
-        lea edi,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]       ; edi = physical address of boot_page_directory
-        lea esi,[dword (boot_page_table_0 -  KERNEL_VMA_OFFSET)]          ; esi = physical address of boot_page_table_0
-        mov edx, esi
-        and edx, 0xfffff000
-        or edx,1
-        mov [edi], edx                                                  ; physical 4K aligned address of first page table entry and "present" bit set
+        lea edi,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]       ; edi = physical address of boot_page_directory        
+        call _k_alloc_frame                                             ; allocate a frame for the first page table
+        mov esi, ebx
+        and ebx, 0xfffff000
+        or ebx,1
+        mov [edi], ebx                                                  ; physical 4K aligned address of first page table entry and "present" bit set
         xor edx,edx
     .map_1st_meg:
         ; set each page table entry to the next physical address with "present" bit set
@@ -174,29 +203,23 @@ _start:
         ; --------------------------------------------
         ; set up the kernel mapping from KERNEL_VMA->0x100000
         ; --------------------------------------------       
-        ; map kernel into boot_page_table_1
-
-        lea ecx,[dword _k_virtual_end]
-        sub ecx,dword _k_virtual_start                                  ; ecx = size of kernel
-        mov edx, ecx
-        and edx, 0xfff
-        jz .map_kernel
-        ; adjust for remainder frame (kernel size mod 4K)
-        inc ecx
-    .map_kernel:
-        ; we need to map ecx pages
-        add edi, 4*(KERNEL_VMA/400000h)     ; edi = physical address of page directory entry for the start of our kernel in virtual memory
+        ; we need a separate page table for the kernel
+        call _k_alloc_frame
+        mov esi, ebx
 
         ; calculate the offset into the page table for the kernel's virtual start address
-        lea esi,[ dword (boot_page_table_1 -  KERNEL_VMA_OFFSET)]
         mov edx, _k_virtual_start
         and edx, 3fffffh
         shr edx, 12
         shl edx, 2
         add edx, esi
         mov esi, edx
-
         or edx,1
+
+        mov ebx, _k_virtual_start
+        shr ebx, 22
+        shl ebx, 2
+        add edi, ebx                    ; edi = physical address of page directory entry for the start of our kernel in virtual memory    
         mov [edi], edx                  ; entry for our kernel in the page directory ->  boot_page_table_1[_k_virtual_start]
 
         mov edx, _k_phys_start
@@ -207,8 +230,8 @@ _start:
         add esi, 4
         add edx, 0x1000
         cmp edx, _k_phys_end
-        jle .map_kernel_page
-        
+        jle .map_kernel_page        
+
         ; now switch on paging
         lea ebx, [dword(boot_page_directory - KERNEL_VMA_OFFSET)]
         mov cr3, ebx
@@ -219,6 +242,10 @@ _start:
     .high_half:
         
         ; at this point all kernel virtual addresses are valid through our mappings
+
+        ; reset the stack to the virtual top 
+        mov ebp, _stack_top
+        mov esp, ebp
 
         ; switch to our own GDT
         cli

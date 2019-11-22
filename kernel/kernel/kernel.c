@@ -101,6 +101,30 @@ static void irq_1_handler(int irq)
     printf("\tIRQ %d handler, keyboard\n", irq);
 }
 
+uint32_t _k_check_memory_availability(multiboot_info_t* mboot, uint32_t from_phys)
+{
+    /*
+    * NOTE: this function MUST NOT use any variables not within its scope.
+    * it is invoked prior to page mapping initialisation.
+    */
+    if(mboot->flags & MULTIBOOT_INFO_MEMORY)
+    {
+        for (multiboot_memory_map_t* mmap = (multiboot_memory_map_t *) mboot->mmap_addr; 
+            (unsigned long) mmap <mboot->mmap_addr + mboot->mmap_length; 
+            mmap = (multiboot_memory_map_t *) ((unsigned long) mmap + mmap->size + sizeof (mmap->size)))
+        {
+            if(mmap->type == MULTIBOOT_MEMORY_AVAILABLE)
+            {                
+                if( from_phys > mmap->addr && from_phys < mmap->addr+mmap->len)
+                {
+                    return mmap->addr+mmap->len - from_phys;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
 void _k_main(uint32_t magic, multiboot_info_t *mboot)
 {    
     k_tty_initialize();
