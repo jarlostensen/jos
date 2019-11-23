@@ -130,6 +130,7 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
     k_tty_initialize();
     k_tty_disable_cursor();    
     k_serial_init();
+    k_alloc_init();
 
     printf("=============================================\n");
     printf("This is the jOS kernel\n\n");

@@ -69,20 +69,23 @@ extern _k_phys_end
 
 ; -----------------------------------------------------------------------
 
-global _k_frame_alloc_phys_ptr
-_k_frame_alloc_phys_ptr:
-    dd 0
+global _k_frame_alloc_ptr
+_k_frame_alloc_ptr:
+    dd 0                ; physical address
+    dd 0                ; virtual (effectively physical + KERNEL_VMA_OFFSET)
 
 ; initialise our simple linear frame allocator by making sure allocations 
 ; are 4K aligned, starting at the end of the loaded kernel space
-_k_alloc_init:
+_alloc_init:
         push ebx
         push edx
-        lea edx, [dword(_k_frame_alloc_phys_ptr - KERNEL_VMA_OFFSET)]
+        lea edx, [dword(_k_frame_alloc_ptr - KERNEL_VMA_OFFSET)]
         mov ebx,_k_phys_end
         add ebx,0xfff
         and ebx,~0xfff
         mov [edx],ebx
+        add ebx, KERNEL_VMA_OFFSET  ; to virtual
+        mov [edx+4], ebx
         pop edx
         pop ebx
         ret
@@ -90,11 +93,11 @@ _k_alloc_init:
 ; allocate a 4K frame and return it's physical address in ebx
 ; also zeros out the contents of the frame. Update allocator.
 ; ebx => physical frame
-_k_alloc_frame:
+_alloc_frame:
         push eax
         push ecx
         push edi
-        lea edi, [dword(_k_frame_alloc_phys_ptr - KERNEL_VMA_OFFSET)]
+        lea edi, [dword(_k_frame_alloc_ptr - KERNEL_VMA_OFFSET)]
         mov ebx, [edi]
         mov edi, ebx
         
@@ -102,9 +105,10 @@ _k_alloc_frame:
         mov ecx, 0x400
         xor eax,eax
         rep stosd
-        ; advance _k_frame_alloc_phys_ptr by one frame
-        lea edi, [dword(_k_frame_alloc_phys_ptr - KERNEL_VMA_OFFSET)]
-        add dword [edi], 0x1000        
+        ; advance _k_frame_alloc_ptr by one frame
+        lea edi, [dword(_k_frame_alloc_ptr - KERNEL_VMA_OFFSET)]
+        add dword [edi], 0x1000
+        add dword [edi+4], 0x1000
         pop edi
         pop ecx
         pop eax
@@ -146,6 +150,80 @@ _virt_to_phys:
         pop eax
         ret
 
+; identity map the BIOS and <1Meg RAM areas [0, 1Meg] -> [0, 1Meg]
+_identity_map_low_ram:
+        push ebx
+        push edx
+        push edi
+        push esi
+
+        lea edi,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]       ; edi = physical address of boot_page_directory        
+        call _alloc_frame                                             ; allocate a frame for the first page table
+        mov esi, ebx
+        and ebx, 0xfffff000
+        or ebx,1
+        mov [edi], ebx                                                  ; physical 4K aligned address of first page table entry and "present" bit set
+        xor edx,edx
+    .map_1st_meg:
+        ; set each page table entry to the next physical address with "present" bit set
+        mov ecx, edx
+        or ecx,1
+        mov [esi], ecx
+        add esi,4
+        ; next frame (4K increments) until we've covered the first meg
+        add edx, 0x1000
+        cmp edx, 0x100000
+        jle .map_1st_meg
+
+        pop esi
+        pop edi
+        pop edx
+        pop ebx
+        ret
+
+; map the kernel [_k_virtual_start,_k_virtual_end] -> [_k_phys_start, _k_phys_end]
+_map_kernel:
+        push ebx
+        push edx
+        push edi
+        push esi
+
+        ; we need a separate page table for the kernel
+        call _alloc_frame
+        mov esi, ebx
+
+        ; calculate the offset into the page table for the kernel's virtual start address
+        mov edx, _k_virtual_start
+        and edx, 3fffffh
+        shr edx, 12
+        shl edx, 2
+        add edx, esi
+        mov esi, edx
+        or edx,1
+
+        mov ebx, _k_virtual_start
+        shr ebx, 22
+        shl ebx, 2
+        lea edi,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]
+        add edi, ebx                    ; edi = physical address of page directory entry for the start of our kernel in virtual memory    
+        mov [edi], edx                  ; entry for our kernel in the page directory ->  boot_page_table_1[_k_virtual_start]
+
+        mov edx, _k_phys_start
+    .map_kernel_page:
+        mov ebx, edx
+        or ebx,1
+        mov [esi], ebx
+        add esi, 4
+        add edx, 0x1000
+        cmp edx, _k_phys_end
+        jle .map_kernel_page        
+
+        pop esi
+        pop edi
+        pop edx
+        pop ebx
+        ret
+
 ; -----------------------------------------------------------------------
 ; 
 global _start:function (_start.end - _start)
@@ -175,62 +253,18 @@ _start:
         ;TODO: check we've got at least some amount available
 
         ; initialise our physical frame allocator
-        call _k_alloc_init
+        call _alloc_init
 
         ;--------------------------------------
         ; set up the initial page mapping from 0->0
         ; --------------------------------------------
         ; identity map the first meg in boot_page_table_0
-
-        lea edi,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]       ; edi = physical address of boot_page_directory        
-        call _k_alloc_frame                                             ; allocate a frame for the first page table
-        mov esi, ebx
-        and ebx, 0xfffff000
-        or ebx,1
-        mov [edi], ebx                                                  ; physical 4K aligned address of first page table entry and "present" bit set
-        xor edx,edx
-    .map_1st_meg:
-        ; set each page table entry to the next physical address with "present" bit set
-        mov ecx, edx
-        or ecx,1
-        mov [esi], ecx
-        add esi,4
-        ; next frame (4K increments) until we've covered the first meg
-        add edx, 0x1000
-        cmp edx, 0x100000
-        jle .map_1st_meg
+        call _identity_map_low_ram
 
         ; --------------------------------------------
         ; set up the kernel mapping from KERNEL_VMA->0x100000
         ; --------------------------------------------       
-        ; we need a separate page table for the kernel
-        call _k_alloc_frame
-        mov esi, ebx
-
-        ; calculate the offset into the page table for the kernel's virtual start address
-        mov edx, _k_virtual_start
-        and edx, 3fffffh
-        shr edx, 12
-        shl edx, 2
-        add edx, esi
-        mov esi, edx
-        or edx,1
-
-        mov ebx, _k_virtual_start
-        shr ebx, 22
-        shl ebx, 2
-        add edi, ebx                    ; edi = physical address of page directory entry for the start of our kernel in virtual memory    
-        mov [edi], edx                  ; entry for our kernel in the page directory ->  boot_page_table_1[_k_virtual_start]
-
-        mov edx, _k_phys_start
-    .map_kernel_page:
-        mov ebx, edx
-        or ebx,1
-        mov [esi], ebx
-        add esi, 4
-        add edx, 0x1000
-        cmp edx, _k_phys_end
-        jle .map_kernel_page        
+        call _map_kernel
 
         ; now switch on paging
         lea ebx, [dword(boot_page_directory - KERNEL_VMA_OFFSET)]
