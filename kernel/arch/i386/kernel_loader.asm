@@ -150,6 +150,54 @@ _virt_to_phys:
         pop eax
         ret
 
+; void _insert_virt_to_phys_mapping(phys, virt)
+; allocates a page table if needed
+; does NOT overwrite an existing mapping
+_insert_virt_to_phys_mapping:
+
+        push ebp
+        mov ebp, esp
+
+        push ebx
+        push ecx
+        push edx
+
+        mov ecx, [ebp+12]   ; virt
+        shr ecx, 22
+        shl ecx, 2
+        lea edx,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]
+        add edx, ecx
+        mov ebx, [edx]  ; page table entry from directory
+        test ebx,ebx
+        jnz .valid
+        
+        ; page table for this address is missing; insert a new one
+        call _alloc_frame
+        or ebx, 1
+        mov [edx], ebx        
+
+    .valid:
+        and ebx, ~0fffh
+        ; ebx = valid page table
+        mov ecx, [ebp+12]   ; virt
+        and ecx, 3fffffh
+        shr ecx, 12         ; / 1000h
+        shl ecx, 2          ; ecx = offset of frame in page table
+        add ebx, ecx
+        mov edx, [ebx]
+        test edx, 1
+        jnz .done           ; if an entry already exists we don't overwrite
+        mov ecx, [ebp+8]    ; phys
+        or ecx, 1
+        mov [ebx], ecx
+.done:
+        pop edx
+        pop ecx
+        pop ebx
+
+        pop ebp
+        ret
+
 ; identity map the BIOS and <1Meg RAM areas [0, 1Meg] -> [0, 1Meg]
 _identity_map_low_ram:
         push ebx
@@ -224,6 +272,10 @@ _map_kernel:
         pop ebx
         ret
 
+ ; void _map_4meg_section(size, phys, virt)
+_map_4meg_section:
+        ret
+
 ; -----------------------------------------------------------------------
 ; 
 global _start:function (_start.end - _start)
@@ -265,6 +317,41 @@ _start:
         ; set up the kernel mapping from KERNEL_VMA->0x100000
         ; --------------------------------------------       
         call _map_kernel
+
+        ; --------------------------------------------
+        ; 
+        mov ebx, _k_phys_end
+        add ebx, 400000h        ; leave a 4Meg hole
+        mov edx, _k_virtual_end
+        mov ecx, [_k_phys_memory_available-KERNEL_VMA_OFFSET]   ;< should be region between end of kernel and top of ram        
+    .map_ram:
+        
+        ; ebx = physical start of section (4Meg aligned)
+        ; edx = virtual start (4Meg aligned)
+        push 400000h
+        push ebx
+        push edx        
+        ; void _map_4meg_section(size, phys, virt)
+        call _map_4meg_section
+        add esp, 3*4
+
+        ; next 4Megs
+        add ebx, 400000h
+        add edx, 400000h
+        sub ecx, 400000h
+        jnz .map_ram
+
+        mov ecx, [_k_phys_memory_available-KERNEL_VMA_OFFSET]   ;< should be region between end of kernel and top of ram        
+        and ecx, 3fffffh
+        jnz .ram_map_done
+
+        ; map remaining section (< 4Megs)
+        push ecx
+        push ebx
+        push edx
+        call _map_4meg_section
+        add esp, 3*4
+.ram_map_done:
 
         ; now switch on paging
         lea ebx, [dword(boot_page_directory - KERNEL_VMA_OFFSET)]
