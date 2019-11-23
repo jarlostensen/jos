@@ -293,17 +293,6 @@ _start:
         mov ss, ax
         jmp dword 08h:.flush_gdt
     .flush_gdt:        
-        mov eax, cr0        
-        test eax,1
-        jnz .protected_mode
-
-        ; GRUB has already switched us into this mode so should never be required, but we'll leave it for now
-        or eax,1
-        mov cr0, eax        
-        jmp dword 08h:.protected_mode
-        nop
-        nop    
-    .protected_mode:        
         push dword [main_args]              ; ebx = multiboot pointer
         push dword [main_args+4]            ; eax = multiboot magic number
         call _k_main
