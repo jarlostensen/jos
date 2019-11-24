@@ -114,6 +114,27 @@ _alloc_frame:
         pop eax
         ret
 
+; virtual address to page directory (byte offset of entry)
+%macro VIRT_TO_PD_OFFSET 1
+        shr %1, 22      ; / 400000h
+        shl %1, 2       ; * 4 (sizeof(uintptr_t))
+%endmacro
+
+; virtual address to page table entry byte offset
+%macro VIRT_TO_PT_OFFSET 1
+        and %1, 3fffffh ; mod 400000h
+        shr %1, 12      ; / 1000h
+        shl %1, 2       ; * 4 (sizeof(uintptr_t))
+%endmacro
+
+; ARG(1) -> [ebp + 12]
+%define ARG(i) [ebp+4+4*(1+i)]
+
+; LOAD_ARG ecx 0 -> ecx = [ebp + 8]
+%macro LOAD_ARG 2
+        mov %1, [ebp+4+4*(1+%2)]
+%endmacro
+
 ; eax = virt
 ; -> ebx = physical address or 0
 _virt_to_phys:
@@ -123,8 +144,7 @@ _virt_to_phys:
 
         mov ecx, eax
         shr ecx, 22             ; / 400000h = page table entry index
-        and eax, 3fffffh        ; mod 400000h
-
+        
         lea ebx,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]
         shl ecx, 2          ; to byte offset (page table entry)
         add ebx, ecx        ; offset into page directory
@@ -134,8 +154,7 @@ _virt_to_phys:
         jz .invalid
 
         and ebx, ~0fffh      ; mask out flags to get phys table address
-        shr eax, 12         ; / 1000h
-        shl eax, 2          ; byte offset of frame entry in page table
+        VIRT_TO_PT_OFFSET eax
         add ebx, eax        
         mov ebx, [ebx]      ; page table entry (frame)
         test ebx, 1
@@ -163,8 +182,7 @@ _insert_virt_to_phys_mapping:
         push edx
 
         mov ecx, [ebp+12]   ; virt
-        shr ecx, 22
-        shl ecx, 2
+        VIRT_TO_PD_OFFSET ecx
         lea edx,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]
         add edx, ecx
         mov ebx, [edx]  ; page table entry from directory
@@ -180,9 +198,7 @@ _insert_virt_to_phys_mapping:
         and ebx, ~0fffh
         ; ebx = valid page table
         mov ecx, [ebp+12]   ; virt
-        and ecx, 3fffffh
-        shr ecx, 12         ; / 1000h
-        shl ecx, 2          ; ecx = offset of frame in page table
+        VIRT_TO_PT_OFFSET ecx
         add ebx, ecx
         mov edx, [ebx]
         test edx, 1
@@ -191,6 +207,54 @@ _insert_virt_to_phys_mapping:
         or ecx, 1
         mov [ebx], ecx
 .done:
+        pop edx
+        pop ecx
+        pop ebx
+
+        pop ebp
+        ret
+
+; uintptr_t _pt_insert(uintptr_t pt, uintptr_t virt, uintptr_t phys) -> eax
+_pt_insert:
+        push ebp
+        mov ebp, esp
+
+        push ebx
+        push ecx
+        push edx
+
+        LOAD_ARG ecx, 1             ; virt
+        VIRT_TO_PD_OFFSET ecx
+        lea edx,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]
+        add edx, ecx
+        mov edx, [edx]
+        and edx, ~0fffh
+        cmp edx, ARG(0)       ; if ( virt_to_pagetable(virt) == pt )
+        je .insert
+
+        ; virtual address maps to different page table, either insert a new one or switch to one that's there
+        or edx, edx
+        jnz .insert
+        
+        ; need to add new page table
+        call _alloc_frame
+        or ebx, 1
+        lea edx,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]
+        add edx, ecx
+        mov [edx], ebx       ; insert new page table entry into page directory
+        mov edx, ebx
+        and edx, ~0fffh     ; edx = address of new pt
+        
+    .insert:
+        mov ebx, edx
+        LOAD_ARG ecx, 1         ; virt
+        VIRT_TO_PT_OFFSET ecx
+        add edx, ecx
+        LOAD_ARG ecx, 2         ; phys
+        or ecx, 1
+        mov [edx], ecx
+        mov eax, ebx
+
         pop edx
         pop ecx
         pop ebx
