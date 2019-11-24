@@ -114,6 +114,8 @@ _alloc_frame:
         pop eax
         ret
 
+%define BOCHS_BREAKPOINT xchg bx,bx
+
 ; virtual address to page directory (byte offset of entry)
 %macro VIRT_TO_PD_OFFSET 1
         shr %1, 22      ; / 400000h
@@ -134,6 +136,8 @@ _alloc_frame:
 %macro LOAD_ARG 2
         mov %1, [ebp+4+4*(1+%2)]
 %endmacro
+
+%define POP_CALL_STACK(argCount) add esp, 4*argCount
 
 ; eax = virt
 ; -> ebx = physical address or 0
@@ -233,12 +237,13 @@ _pt_insert:
         je .insert
 
         ; virtual address maps to different page table, either insert a new one or switch to one that's there
-        or edx, edx
+        test edx, edx
         jnz .insert
         
         ; need to add new page table
         call _alloc_frame
         or ebx, 1
+
         lea edx,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]
         add edx, ecx
         mov [edx], ebx       ; insert new page table entry into page directory
@@ -266,29 +271,22 @@ _pt_insert:
 _identity_map_low_ram:
         push ebx
         push edx
-        push edi
-        push esi
 
-        lea edi,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]       ; edi = physical address of boot_page_directory        
-        call _alloc_frame                                             ; allocate a frame for the first page table
-        mov esi, ebx
-        and ebx, 0xfffff000
-        or ebx,1
-        mov [edi], ebx                                                  ; physical 4K aligned address of first page table entry and "present" bit set
-        xor edx,edx
+        call _alloc_frame           ; ebx = page table frame
+        xor edx, edx                ; start at 0
+
     .map_1st_meg:
-        ; set each page table entry to the next physical address with "present" bit set
-        mov ecx, edx
-        or ecx,1
-        mov [esi], ecx
-        add esi,4
+        push edx
+        push edx
+        push ebx
+        call _pt_insert
+        POP_CALL_STACK(3)
+        mov ebx, eax    ; active page table returned by _pt_insert
         ; next frame (4K increments) until we've covered the first meg
         add edx, 0x1000
         cmp edx, 0x100000
         jle .map_1st_meg
 
-        pop esi
-        pop edi
         pop edx
         pop ebx
         ret
@@ -351,6 +349,7 @@ _start:
         
         lea ebp, [dword (_stack_top - KERNEL_VMA_OFFSET)]
         mov esp, ebp
+
         
         ; the multiboot the machine state is as follows:
         ; https://www.gnu.org/software/grub/manual/multiboot/html_node/Machine-state.html#Machine-state
@@ -381,6 +380,9 @@ _start:
         ; set up the kernel mapping from KERNEL_VMA->0x100000
         ; --------------------------------------------       
         call _map_kernel
+
+;TESTING: just bypassing the next section while it's WIP
+        jmp .ram_map_done
 
         ; --------------------------------------------
         ; 
@@ -415,7 +417,7 @@ _start:
         push edx
         call _map_4meg_section
         add esp, 3*4
-.ram_map_done:
+.ram_map_done:    
 
         ; now switch on paging
         lea ebx, [dword(boot_page_directory - KERNEL_VMA_OFFSET)]
