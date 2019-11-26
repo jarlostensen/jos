@@ -294,48 +294,28 @@ _identity_map_low_ram:
 ; map the kernel [_k_virtual_start,_k_virtual_end] -> [_k_phys_start, _k_phys_end]
 _map_kernel:
         push ebx
+        push ecx
         push edx
-        push edi
-        push esi
-
-        ; we need a separate page table for the kernel
+        
         call _alloc_frame
-        mov esi, ebx
-
-        ; calculate the offset into the page table for the kernel's virtual start address
-        mov edx, _k_virtual_start
-        and edx, 3fffffh
-        shr edx, 12
-        shl edx, 2
-        add edx, esi
-        mov esi, edx
-        or edx,1
-
-        mov ebx, _k_virtual_start
-        shr ebx, 22
-        shl ebx, 2
-        lea edi,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]
-        add edi, ebx                    ; edi = physical address of page directory entry for the start of our kernel in virtual memory    
-        mov [edi], edx                  ; entry for our kernel in the page directory ->  boot_page_table_1[_k_virtual_start]
-
-        mov edx, _k_phys_start
+        
+        mov  edx, _k_virtual_start
+        mov  ecx, _k_phys_start
     .map_kernel_page:
-        mov ebx, edx
-        or ebx,1
-        mov [esi], ebx
-        add esi, 4
+        push ecx
+        push edx
+        push ebx
+        call _pt_insert
+        POP_CALL_STACK(3)
+        mov ebx, eax
         add edx, 0x1000
-        cmp edx, _k_phys_end
-        jle .map_kernel_page        
+        add ecx, 0x1000
+        cmp ecx, _k_phys_end
+        jl .map_kernel_page
 
-        pop esi
-        pop edi
         pop edx
+        pop ecx
         pop ebx
-        ret
-
- ; void _map_4meg_section(size, phys, virt)
-_map_4meg_section:
         ret
 
 ; -----------------------------------------------------------------------
@@ -380,45 +360,7 @@ _start:
         ; set up the kernel mapping from KERNEL_VMA->0x100000
         ; --------------------------------------------       
         call _map_kernel
-
-;TESTING: just bypassing the next section while it's WIP
-        jmp .ram_map_done
-
-        ; --------------------------------------------
-        ; 
-        mov ebx, _k_phys_end
-        add ebx, 400000h        ; leave a 4Meg hole
-        mov edx, _k_virtual_end
-        mov ecx, [_k_phys_memory_available-KERNEL_VMA_OFFSET]   ;< should be region between end of kernel and top of ram        
-    .map_ram:
-        
-        ; ebx = physical start of section (4Meg aligned)
-        ; edx = virtual start (4Meg aligned)
-        push 400000h
-        push ebx
-        push edx        
-        ; void _map_4meg_section(size, phys, virt)
-        call _map_4meg_section
-        add esp, 3*4
-
-        ; next 4Megs
-        add ebx, 400000h
-        add edx, 400000h
-        sub ecx, 400000h
-        jnz .map_ram
-
-        mov ecx, [_k_phys_memory_available-KERNEL_VMA_OFFSET]   ;< should be region between end of kernel and top of ram        
-        and ecx, 3fffffh
-        jnz .ram_map_done
-
-        ; map remaining section (< 4Megs)
-        push ecx
-        push ebx
-        push edx
-        call _map_4meg_section
-        add esp, 3*4
-.ram_map_done:    
-
+BOCHS_BREAKPOINT
         ; now switch on paging
         lea ebx, [dword(boot_page_directory - KERNEL_VMA_OFFSET)]
         mov cr3, ebx

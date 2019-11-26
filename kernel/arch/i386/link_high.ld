@@ -37,8 +37,8 @@ SECTIONS
 		*(COMMON)
 		*(.bss)
 	}
-
-	end = .; _end = .; __end = .;	
+	/* to make kernel paging setup simpler we align the end of the kernel to a 4K boundary */
+	. = ALIGN(4K);
 	_k_virtual_end = .;
 	_k_phys_end = . - 0xc0000000;
 }
