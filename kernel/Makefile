@@ -39,6 +39,7 @@ kernel/cpu.o \
 kernel/paging.o \
 kernel/serial.o \
 kernel/ktrace.o \
+kernel/memory.o \
 
 OBJS=\
 $(ARCHDIR)/crti.o \

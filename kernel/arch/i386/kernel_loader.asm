@@ -53,6 +53,9 @@ extern _k_main
 ;uint32_t _k_check_memory_availability(multiboot_info_t* mboot, uint32_t from_phys)
 extern  _k_check_memory_availability
 
+; uintptr_t k_mem_virt_to_phys(uintptr_t virt)
+extern k_mem_virt_to_phys
+
 _k_phys_memory_available:
     dd 0
 
@@ -114,30 +117,8 @@ _alloc_frame:
         pop eax
         ret
 
-%define BOCHS_BREAKPOINT xchg bx,bx
-
-; virtual address to page directory (byte offset of entry)
-%macro VIRT_TO_PD_OFFSET 1
-        shr %1, 22      ; / 400000h
-        shl %1, 2       ; * 4 (sizeof(uintptr_t))
-%endmacro
-
-; virtual address to page table entry byte offset
-%macro VIRT_TO_PT_OFFSET 1
-        and %1, 3fffffh ; mod 400000h
-        shr %1, 12      ; / 1000h
-        shl %1, 2       ; * 4 (sizeof(uintptr_t))
-%endmacro
-
-; ARG(1) -> [ebp + 12]
-%define ARG(i) [ebp+4+4*(1+i)]
-
-; LOAD_ARG ecx 0 -> ecx = [ebp + 8]
-%macro LOAD_ARG 2
-        mov %1, [ebp+4+4*(1+%2)]
-%endmacro
-
-%define POP_CALL_STACK(argCount) add esp, 4*argCount
+; various helper macros, like BOCHS_BREAKPOINT and LOAD_ARG etc.
+%include "arch/i386/macros.inc"
 
 ; eax = virt
 ; -> ebx = physical address or 0
@@ -284,7 +265,6 @@ _start:
         
         lea ebp, [dword (_stack_top - KERNEL_VMA_OFFSET)]
         mov esp, ebp
-
         
         ; the multiboot the machine state is as follows:
         ; https://www.gnu.org/software/grub/manual/multiboot/html_node/Machine-state.html#Machine-state
@@ -338,13 +318,14 @@ _start:
     .high_half:
         
         ; at this point all kernel virtual addresses are valid through our mappings
+        cli
 
         ; reset the stack to the virtual top 
         mov ebp, _stack_top
         mov esp, ebp
 
         ; switch to our own GDT
-        cli
+        
         lgdt [dword _k_gdt_desc]
         mov eax, 10h
         mov ds, ax
