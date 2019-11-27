@@ -173,51 +173,6 @@ _virt_to_phys:
         pop eax
         ret
 
-; void _insert_virt_to_phys_mapping(phys, virt)
-; allocates a page table if needed
-; does NOT overwrite an existing mapping
-_insert_virt_to_phys_mapping:
-
-        push ebp
-        mov ebp, esp
-
-        push ebx
-        push ecx
-        push edx
-
-        mov ecx, [ebp+12]   ; virt
-        VIRT_TO_PD_OFFSET ecx
-        lea edx,[dword (boot_page_directory - KERNEL_VMA_OFFSET)]
-        add edx, ecx
-        mov ebx, [edx]  ; page table entry from directory
-        test ebx,ebx
-        jnz .valid
-        
-        ; page table for this address is missing; insert a new one
-        call _alloc_frame
-        or ebx, 1
-        mov [edx], ebx        
-
-    .valid:
-        and ebx, ~0fffh
-        ; ebx = valid page table
-        mov ecx, [ebp+12]   ; virt
-        VIRT_TO_PT_OFFSET ecx
-        add ebx, ecx
-        mov edx, [ebx]
-        test edx, 1
-        jnz .done           ; if an entry already exists we don't overwrite
-        mov ecx, [ebp+8]    ; phys
-        or ecx, 1
-        mov [ebx], ecx
-.done:
-        pop edx
-        pop ecx
-        pop ebx
-
-        pop ebp
-        ret
-
 ; uintptr_t _pt_insert(uintptr_t pt, uintptr_t virt, uintptr_t phys) -> eax
 _pt_insert:
         push ebp
@@ -360,8 +315,20 @@ _start:
         ; set up the kernel mapping from KERNEL_VMA->0x100000
         ; --------------------------------------------       
         call _map_kernel
-BOCHS_BREAKPOINT
-        ; now switch on paging
+
+        ; --------------------------------------------
+        ; add the "self pointer" for the page directory to itself
+        ; at industry standard 1024
+        ; --------------------------------------------
+        lea edi, [dword(boot_page_directory - KERNEL_VMA_OFFSET)]
+        mov ebx, 0ffch          ; 1023 * 4 -> virtual address 0xffc00000
+        mov edx, edi
+        or edx, 0b11            ; present + writable
+        mov [edi + ebx], edx    ; point to PD[0]
+
+        ; --------------------------------------------
+        ;  switch on paging
+        ; --------------------------------------------
         lea ebx, [dword(boot_page_directory - KERNEL_VMA_OFFSET)]
         mov cr3, ebx
         mov ebx, cr0
