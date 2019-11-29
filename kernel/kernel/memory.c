@@ -110,6 +110,7 @@ static uintptr_t _mem_alloc_frames(size_t frameCount)
     uintptr_t phys = _page_frame_alloc_ptr->_phys;
     _page_frame_alloc_ptr->_phys += 0x1000 * frameCount;
     _page_frame_alloc_ptr->_virt += 0x1000 * frameCount;
+    _avail_frames -= frameCount;
     // always 4K aligned, low 12 bits 0
     return phys;
 }
