@@ -32,11 +32,9 @@ KERNEL_OBJS=\
 $(KERNEL_ARCH_OBJS) \
 $(KERNEL_ARCH_EXT_OBJS)\
 kernel/kernel.o \
-kernel/kalloc.o \
 kernel/interrupts.o \
 kernel/clock.o \
 kernel/cpu.o \
-kernel/paging.o \
 kernel/serial.o \
 kernel/ktrace.o \
 kernel/memory.o \

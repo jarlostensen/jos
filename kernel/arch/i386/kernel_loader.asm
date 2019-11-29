@@ -50,9 +50,6 @@ section .text
 ; void _k_main(uint32_t magic, multiboot_info_t *mboot)
 extern _k_main
 
-;uint32_t _k_check_memory_availability(multiboot_info_t* mboot, uint32_t from_phys)
-extern  _k_check_memory_availability
-
 ; uintptr_t k_mem_virt_to_phys(uintptr_t virt)
 extern k_mem_virt_to_phys
 
@@ -66,14 +63,14 @@ main_args:
 
 ; these are defined in linker_high.ld
 extern _k_phys_start
-extern _k_virtual_start
-extern _k_virtual_end
+extern _k_virt_start
+extern _k_virt_end
 extern _k_phys_end
 
 ; -----------------------------------------------------------------------
 
-global _k_frame_alloc_ptr
-_k_frame_alloc_ptr:
+global _k_page_frame_alloc_ptr
+_k_page_frame_alloc_ptr:
     dd 0                ; physical address
     dd 0                ; virtual (effectively physical + KERNEL_VMA_OFFSET)
 
@@ -82,7 +79,7 @@ _k_frame_alloc_ptr:
 _alloc_init:
         push ebx
         push edx
-        lea edx, [dword(_k_frame_alloc_ptr - KERNEL_VMA_OFFSET)]
+        lea edx, [dword(_k_page_frame_alloc_ptr - KERNEL_VMA_OFFSET)]
         mov ebx,_k_phys_end
         add ebx,0xfff
         and ebx,~0xfff
@@ -100,7 +97,7 @@ _alloc_frame:
         push eax
         push ecx
         push edi
-        lea edi, [dword(_k_frame_alloc_ptr - KERNEL_VMA_OFFSET)]
+        lea edi, [dword(_k_page_frame_alloc_ptr - KERNEL_VMA_OFFSET)]
         mov ebx, [edi]
         mov edi, ebx
         
@@ -108,8 +105,8 @@ _alloc_frame:
         mov ecx, 0x400
         xor eax,eax
         rep stosd
-        ; advance _k_frame_alloc_ptr by one frame
-        lea edi, [dword(_k_frame_alloc_ptr - KERNEL_VMA_OFFSET)]
+        ; advance _k_page_frame_alloc_ptr by one frame
+        lea edi, [dword(_k_page_frame_alloc_ptr - KERNEL_VMA_OFFSET)]
         add dword [edi], 0x1000
         add dword [edi+4], 0x1000
         pop edi
@@ -227,7 +224,7 @@ _identity_map_low_ram:
         pop ebx
         ret
 
-; map the kernel [_k_virtual_start,_k_virtual_end] -> [_k_phys_start, _k_phys_end]
+; map the kernel [_k_virt_start,_k_virt_end] -> [_k_phys_start, _k_phys_end]
 _map_kernel:
         push ebx
         push ecx
@@ -235,7 +232,7 @@ _map_kernel:
         
         call _alloc_frame
         
-        mov  edx, _k_virtual_start
+        mov  edx, _k_virt_start
         mov  ecx, _k_phys_start
     .map_kernel_page:
         push ecx
@@ -273,14 +270,6 @@ _start:
         ; note: ebx is the LMA and will point somewhere in <1Meg RAM
         mov [main_args - KERNEL_VMA_OFFSET], ebx
         mov [(main_args+4) - KERNEL_VMA_OFFSET], eax
-
-        ; get amount of physical memory available in the region inlcuding our kernel and store it for later
-        push dword _k_phys_end 
-        push ebx
-        call _k_check_memory_availability
-        add esp, 4*2        
-        mov [_k_phys_memory_available-KERNEL_VMA_OFFSET], eax
-        ;TODO: check we've got at least some amount available
 
         ; initialise our physical frame allocator
         call _alloc_init

@@ -9,8 +9,8 @@
 #include "../arch/i386/hde/hde32.h"
 #include "interrupts.h"
 #include "clock.h"
+#include "memory.h"
 #include "cpu.h"
-#include "paging.h"
 #include "serial.h"
 
 // =======================================================
@@ -50,6 +50,8 @@ void k_panic()
 
 // ======================================================================================
 // general isr/trap/fault handlers
+
+extern void _k_mem_page_fault_handler(uint32_t error_code, uint16_t cs, uint32_t eip);
 
 static void isr_0_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
 {
@@ -101,37 +103,12 @@ static void irq_1_handler(int irq)
     printf("\tIRQ %d handler, keyboard\n", irq);
 }
 
-uint32_t _k_check_memory_availability(multiboot_info_t* mboot, uint32_t from_phys)
-{
-    /*
-    * NOTE: this function MUST NOT use any variables not within its scope.
-    * it is invoked prior to page mapping initialisation.
-    */
-    if(mboot->flags & MULTIBOOT_INFO_MEMORY)
-    {
-        for (multiboot_memory_map_t* mmap = (multiboot_memory_map_t *) mboot->mmap_addr; 
-            (unsigned long) mmap <mboot->mmap_addr + mboot->mmap_length; 
-            mmap = (multiboot_memory_map_t *) ((unsigned long) mmap + mmap->size + sizeof (mmap->size)))
-        {
-            if(mmap->type == MULTIBOOT_MEMORY_AVAILABLE)
-            {                
-                if( from_phys > mmap->addr && from_phys < mmap->addr+mmap->len)
-                {
-                    return mmap->addr+mmap->len - from_phys;
-                }
-            }
-        }
-    }
-    return 0;
-}
-
 void _k_main(uint32_t magic, multiboot_info_t *mboot)
 {    
     k_tty_initialize();
     k_tty_disable_cursor();    
     k_serial_init();
-    k_alloc_init();
-
+   
     printf("=============================================\n");
     printf("This is the jOS kernel\n\n");
 
@@ -141,35 +118,9 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
         JOS_KTRACE("error: not loaded with multiboot!\n");
         k_panic();
     }
-    else
-    {
-        if(mboot->flags & MULTIBOOT_INFO_MEMORY)
-        {
-            JOS_KTRACE("mem_lower = %d KB, mem_upper = %d KB\n", mboot->mem_lower, mboot->mem_upper);
-            bool has_available = false;
-            for (multiboot_memory_map_t* mmap = (multiboot_memory_map_t *) mboot->mmap_addr; 
-                (unsigned long) mmap <mboot->mmap_addr + mboot->mmap_length; 
-                mmap = (multiboot_memory_map_t *) ((unsigned long) mmap + mmap->size + sizeof (mmap->size)))
-            {
-                if(mmap->type == MULTIBOOT_MEMORY_AVAILABLE)
-                {
-                    JOS_KTRACE("available 0x%x bytes @ 0x%x\n",
-                            (unsigned) mmap->len,
-                            (unsigned) mmap->addr);
-                    has_available = true;
-                }
-            }
-            if(!has_available)
-            {
-                JOS_KTRACE("error: no available RAM\n");
-                k_panic();
-            }
-        }
-    }    
-
+    
+    k_mem_init(mboot);    
     k_cpu_init();            
-
-    //k_alloc_init();    
 
     _k_init_isrs();    
     k_set_irq_handler(1, irq_1_handler);
@@ -181,9 +132,9 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
     k_set_isr_handler(4, isr_4_handler);
     k_set_isr_handler(5, isr_5_handler);
     k_set_isr_handler(6, isr_6_handler);
+    k_set_isr_handler(14, _k_mem_page_fault_handler);
+    
     _k_load_isrs();
-
-    //k_paging_init(); 
 
     k_enable_irq(1);
     k_clock_init();

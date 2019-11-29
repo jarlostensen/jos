@@ -7,7 +7,7 @@ SECTIONS
 		we're mapping it to the "standard" 3Gig+1Meg location
 	 */
 	. = 0xc0100000;	
-	_k_virtual_start = .;
+	_k_virt_start = .;
 	/* kernel physical memory starts at 1MB */
 	_k_phys_start = . - 0xc0000000;
  
@@ -39,6 +39,6 @@ SECTIONS
 	}
 	/* to make kernel paging setup simpler we align the end of the kernel to a 4K boundary */
 	. = ALIGN(4K);
-	_k_virtual_end = .;
+	_k_virt_end = .;
 	_k_phys_end = . - 0xc0000000;
 }
