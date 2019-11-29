@@ -1,11 +1,10 @@
-#include "../include/kernel/kernel.h"
-#include "interrupts.h"
 #include "kernel_detail.h"
-#include "cpu.h"
+#include "memory.h"
 #include <stdio.h>
 #include <string.h>
 
-uintptr_t k_mem_virt_to_phys(uintptr_t virt)
+
+uintptr_t _k_mem_virt_to_pt_entry(uintptr_t virt)
 {
     // we're using the magic "recursive page directory entry" @ 0xfffff000
 
@@ -19,8 +18,20 @@ uintptr_t k_mem_virt_to_phys(uintptr_t virt)
         const uintptr_t* page_table = (const uintptr_t*)(0xffc00000 | (page_table_index<<12));
         if(page_table[frame_index] & 1)
         {
-            return page_table[frame_index] & ~0xfff;
+            return page_table[frame_index];
         }
     }
     return 0;
+}
+
+uintptr_t k_mem_virt_to_phys(uintptr_t virt)
+{
+    return _k_mem_virt_to_pt_entry(virt) & ~0xfff;
+}
+
+_k_alloc_ptr_t _k_mem_alloc(size_t size)
+{
+    //TODO:
+    (void)size;
+    return (_k_alloc_ptr_t){};   
 }

@@ -166,11 +166,10 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
             }
         }
     }    
-    //TESTING: alloc init requires more paging setup
-    k_panic();
 
-    k_alloc_init();
-    k_cpu_init();        
+    k_cpu_init();            
+
+    //k_alloc_init();    
 
     _k_init_isrs();    
     k_set_irq_handler(1, irq_1_handler);
@@ -183,7 +182,8 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
     k_set_isr_handler(5, isr_5_handler);
     k_set_isr_handler(6, isr_6_handler);
     _k_load_isrs();
-    k_paging_init(); 
+
+    //k_paging_init(); 
 
     k_enable_irq(1);
     k_clock_init();
