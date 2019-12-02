@@ -12,7 +12,6 @@
     if (!(cond))\
     {\
         asm("xchg %bx,%bx");\
-        asm("int $0x3");\
     }
 
 void k_outb(uint16_t port, uint8_t value);

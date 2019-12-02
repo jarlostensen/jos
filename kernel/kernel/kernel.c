@@ -105,6 +105,10 @@ static void irq_1_handler(int irq)
 
 void _k_main(uint32_t magic, multiboot_info_t *mboot)
 {    
+    // ================================================================
+    // this section expects INTERRUPTS TO BE DISABLED
+    // ================================================================
+
     k_tty_initialize();
     k_tty_disable_cursor();    
     k_serial_init();
@@ -118,8 +122,8 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
         JOS_KTRACE("error: not loaded with multiboot!\n");
         k_panic();
     }
-    
-    k_mem_init(mboot);    
+            
+    k_mem_init(mboot);
     k_cpu_init();            
 
     _k_init_isrs();    
@@ -138,8 +142,15 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
 
     k_enable_irq(1);
     k_clock_init();
+
+    // ================================================================    
     _k_enable_interrupts();
     
+    uintptr_t mem = k_mem_valloc(0x1000+1, kMemValloc_Commit);
+    memset((void*)mem, 0xff, 0x1000+1);    
+    JOS_KTRACE("test: allocated %d bytes @ 0x%x\n", 0x1001, mem);
+
+
     uint32_t ms = k_get_ms_since_boot();
     printf("waiting for a second starting at %d...", ms);    
     while(ms<=1000)

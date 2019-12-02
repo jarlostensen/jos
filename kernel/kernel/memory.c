@@ -18,11 +18,15 @@ typedef struct page_frame_alloc_struct
 } __attribute__((packed))
 page_frame_alloc_t;
 
+// in kernel.asm
+void _k_move_stack(uintptr_t virt_top);
+
 // in kernel_loader.asm
 void _k_page_frame_alloc_ptr(void);
 // will map to the above
 static page_frame_alloc_t* _page_frame_alloc_ptr = (page_frame_alloc_t*)&_k_page_frame_alloc_ptr;
 static size_t _avail_frames = 0;
+static uintptr_t _valloc_frame_ptr = (uintptr_t)&_k_virt_end;
 
 static inline void _flush_tlb_single(uintptr_t addr)
 {
@@ -115,7 +119,7 @@ static uintptr_t _mem_alloc_frames(size_t frameCount)
     return phys;
 }
 
-void k_mem_map(uintptr_t virt, uintptr_t phys)
+void _k_mem_map(uintptr_t virt, uintptr_t phys)
 {
     virt &= ~0xfff;
     phys &= ~0xfff;
@@ -145,6 +149,29 @@ void k_mem_map(uintptr_t virt, uintptr_t phys)
     //TODO: error? or do we allow re-mapping?
 }
 
+uintptr_t k_mem_valloc(size_t size, int flags)
+{    
+    const size_t frames = (size >> 12) + (size & 0xfff) ? 1:0;
+    if(!size || _avail_frames<frames)
+        return 0;
+    uintptr_t ptr = 0;
+    switch(flags)
+    {
+        case kMemValloc_Commit:
+        {
+            _avail_frames -= frames;
+            ptr = _valloc_frame_ptr;
+            _valloc_frame_ptr += frames*0x1000;
+        }
+        break;
+        case kMemValloc_Reserve:
+        //TODO:
+        JOS_ASSERT(false);
+        break;
+    }
+    return ptr;
+}
+
 void k_mem_init(struct multiboot_info *mboot)
 {
     // end of kernel + 4Megs to skip past area used by page tables
@@ -172,17 +199,24 @@ void k_mem_init(struct multiboot_info *mboot)
         }
         if(avail > 0x1000)
         {
+            const uintptr_t kVirtMapEnd = 0xffc00000;
+            
             _avail_frames = avail >> 12;
             // map everything above the page table area to start at the virtual end-of-kernel address
-            uintptr_t virt = (uintptr_t)&_k_virt_end;
+            uintptr_t virt = _valloc_frame_ptr;
             do
             {
-                k_mem_map(virt, phys);
+                _k_mem_map(virt, phys);
                 avail -= 0x1000;
                 virt += 0x1000;
                 phys += 0x1000;
-            } while(avail > 0x1000 && virt < 0xffc00000);
+            } while(avail > 0x1000 && virt < kVirtMapEnd);
             JOS_KTRACE("mem: 0x%x KB in %d frames mapped from [0x%x, 0x%x] -> [0x%x, 0x%x]\n", _avail_frames<<12, _avail_frames, (uintptr_t)&_k_virt_end, (uintptr_t)&_k_phys_end + 0x400000, virt, phys);
+
+            // move our stack to the top of mapped memory where it can grow downwards towards the heap
+            virt -= 0x1000;
+            _k_move_stack(virt);
+
             return;
         }
     }        

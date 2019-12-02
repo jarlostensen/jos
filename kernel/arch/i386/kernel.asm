@@ -1,6 +1,8 @@
 [bits 32]
 section .bss
-; empty
+; in kernel_loader.asm
+extern _k_stack_top
+
 section .data
 _k_fpu_state_save:
     resb 28
@@ -13,6 +15,9 @@ real_mode_idt:
     dd 0        ; real mode ivt
 
 section .text
+
+; various helper macros, like BOCHS_BREAKPOINT and LOAD_ARG etc.
+%include "arch/i386/macros.inc"
 
 ; returns 1 if protected mode enabled (PE bit in CR0)
 global k_is_protected_mode:function
@@ -108,6 +113,42 @@ _k_enable_paging:
     or eax, 0x80000001
     mov cr0, eax
     ret
+
+; void _k_move_stack(uintptr_t virt_top)
+; NOTE: this function EXPECTS INTERRUPTS TO BE CLEARED
+; it is inly invoked from memory.c for initialisation purposes
+global _k_move_stack:function
+_k_move_stack:
+    push ebp
+    mov ebp, esp
+
+    push eax
+    push ecx
+    push esi
+    push edi
+
+    LOAD_ARG eax, 0             ; new stack top
+
+    ; cli
+    lea ecx, [_k_stack_top]
+    sub ecx, esp                ; bytes pushed on stack until this point
+    mov esi, esp                ; start of current stack to copy
+    sub eax, ecx
+    and eax, ~0xf               ; make sure it's 16 byte aligned
+    mov edi, eax                ; start of target stack area
+    shr ecx, 2
+    rep movsd                   ; copy stack
+    mov esp, eax                ; switch to new stack
+    ; sti
+
+    pop edi
+    pop esi
+    pop ecx
+    pop eax
+    pop ebp
+
+    ret
+
 
 ; this is the core clock IRQ update function, it counts milliseconds using 32.32 fixed point fractions
 ; clock.c

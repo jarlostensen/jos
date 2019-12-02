@@ -28,10 +28,11 @@ align 4
 
 # kernel startup stack
 section .bss
+global _k_stack_top
 align 16
-    stack_bottom:
+    _stack_bottom:
     resb 16384
-    _stack_top:
+    _k_stack_top:
 
 ; this is our boot page directory used to map our high kernel virtual addresses to physical memory.
 ; the vritual address range starts at KERNEL_VMA and is mapped to offset 1Meg in physical RAM
@@ -259,8 +260,10 @@ _start:
         cmp eax, 2badb002h
         ;TODO: write something to screen
         jne .fi
+
+        cli
         
-        lea ebp, [dword (_stack_top - KERNEL_VMA_OFFSET)]
+        lea ebp, [dword (_k_stack_top - KERNEL_VMA_OFFSET)]
         mov esp, ebp
         
         ; the multiboot the machine state is as follows:
@@ -305,12 +308,9 @@ _start:
         mov cr0, ebx
         jmp dword 10h:.high_half
     .high_half:
-        
-        ; at this point all kernel virtual addresses are valid through our mappings
-        cli
 
         ; reset the stack to the virtual top 
-        mov ebp, _stack_top
+        mov ebp, _k_stack_top
         mov esp, ebp
 
         ; switch to our own GDT
