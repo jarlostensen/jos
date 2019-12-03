@@ -5,34 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 
-// in link_high.ld
-void _k_phys_end(void);
-void _k_phys_start(void);
-void _k_virt_end(void);
-void _k_virt_start(void);
-
-typedef struct page_frame_alloc_struct
-{
-    uintptr_t   _phys;
-    uintptr_t   _virt;
-} __attribute__((packed))
-page_frame_alloc_t;
-
-// in kernel.asm
-void _k_move_stack(uintptr_t virt_top);
-
-// in kernel_loader.asm
-void _k_page_frame_alloc_ptr(void);
-// will map to the above
-static page_frame_alloc_t* _page_frame_alloc_ptr = (page_frame_alloc_t*)&_k_page_frame_alloc_ptr;
-static size_t _avail_frames = 0;
-static uintptr_t _valloc_frame_ptr = (uintptr_t)&_k_virt_end;
-
-static inline void _flush_tlb_single(uintptr_t addr)
-{
-   asm volatile("invlpg (%0)" ::"r" (addr) : "memory");
-}
-
 // https://wiki.osdev.org/Paging
 // NOTE: these are really just different views on the same 32(64)-bit data.
 
@@ -68,6 +40,101 @@ struct page_table_struct
 }  __attribute__((packed));
 typedef struct page_table_struct page_table_t;
 
+
+
+// in link_high.ld
+void _k_phys_end(void);
+void _k_phys_start(void);
+void _k_virt_end(void);
+void _k_virt_start(void);
+
+typedef struct page_frame_alloc_struct
+{
+    uintptr_t   _phys;
+    uintptr_t   _virt;
+} __attribute__((packed))
+page_frame_alloc_t;
+
+// in kernel.asm
+void _k_move_stack(uintptr_t virt_top);
+
+// in kernel_loader.asm
+void _k_page_frame_alloc_ptr(void);
+// will map to the above
+static page_frame_alloc_t* _page_frame_alloc_ptr = (page_frame_alloc_t*)&_k_page_frame_alloc_ptr;
+static size_t _avail_frames = 0;
+static uintptr_t _valloc_frame_ptr = (uintptr_t)&_k_virt_end;
+
+// ====================================================================================
+// fixed size pool allocator
+
+typedef struct mem_pool_struct
+{
+    uint8_t     _size_p2;   // power of two unit allocation size
+    size_t      _count;
+    uint32_t    _free;      // index of first free
+} mem_pool_t;
+
+mem_pool_t*     _pool_create(void* mem, size_t size, size_t allocUnitPow2)
+{
+    if(allocUnitPow2 < 3)
+        return 0;
+    mem_pool_t* pool = (mem_pool_t*)mem;
+    pool->_size_p2 = allocUnitPow2;
+    size -= sizeof(mem_pool_t);
+    pool->_count = size / (1<<allocUnitPow2);
+    pool->_free = 0;
+    uint32_t* block = (uint32_t*)((uint8_t*)(pool+1));
+    const uint32_t unit_size = 1<<pool->_size_p2;
+    for(size_t n = 1; n < pool->_count; ++n)
+    {
+        *block = (uint32_t)n;
+        block += (unit_size >> 2);
+    }
+    *block = ~0;
+    return pool;
+}
+
+void* _pool_alloc(mem_pool_t* pool, size_t size)
+{
+    if((size_t)(1<<pool->_size_p2) < size || pool->_free == (uint32_t)~0)
+        return 0;
+    const uint32_t unit_size = 1<<pool->_size_p2;
+    uint32_t* block = (uint32_t*)((uint8_t*)(pool+1) + pool->_free*unit_size);
+    pool->_free = *block; // whatever next it points to
+    return block;
+}
+
+void _pool_free(mem_pool_t* pool, void* block)
+{
+    if(!pool || !block)
+        return;
+    const uint32_t unit_size = 1<<pool->_size_p2;
+    uint32_t* free = (uint32_t*)((uint8_t*)(pool+1) + pool->_free*unit_size);
+    uint32_t* fblock = (uint32_t*)block;
+    *fblock = *free;
+    *free = (uint32_t)((uintptr_t)fblock - (uintptr_t)(pool+1))/unit_size;
+}
+
+void _pool_clear(mem_pool_t* pool)
+{
+    pool->_free = 0;
+    uint32_t* block = (uint32_t*)((uint8_t*)(pool+1));
+    const uint32_t unit_size = 1<<pool->_size_p2;
+    for(size_t n = 1; n < pool->_count; ++n)
+    {
+        *block = (uint32_t)n;
+        block += (unit_size >> 2);
+    }
+    *block = ~0;
+}
+
+// ====================================================================================
+
+static inline void _flush_tlb_single(uintptr_t addr)
+{
+   asm volatile("invlpg (%0)" ::"r" (addr) : "memory");
+}
 
 #define PF_PRESENT          0x1
 #define PF_WRITE            0x2
