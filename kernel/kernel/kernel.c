@@ -146,10 +146,11 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
     // ================================================================    
     _k_enable_interrupts();
     
-    uintptr_t mem = k_mem_valloc(0x1000+1, kMemValloc_Commit);
-    memset((void*)mem, 0xff, 0x1000+1);    
-    JOS_KTRACE("test: allocated %d bytes @ 0x%x\n", 0x1001, mem);
-
+    const size_t kSize = 972;
+    void* mem = k_mem_alloc(kSize);
+    memset(mem, 0xff, kSize);
+    JOS_KTRACE("test: allocated %d bytes @ 0x%x\n", kSize, mem);
+    k_mem_free(mem);
 
     uint32_t ms = k_get_ms_since_boot();
     printf("waiting for a second starting at %d...", ms);    

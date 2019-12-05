@@ -8,11 +8,7 @@
 //TODO: some (or most) of these should eventually end up in libc, probably as a master "jos.h" in the sys include folder?
 
 #define JOS_BOCHS_DBGBREAK() asm("xchg %bx,%bx")
-#define JOS_ASSERT(cond) \
-    if (!(cond))\
-    {\
-        asm("xchg %bx,%bx");\
-    }
+#define JOS_ASSERT(cond)
 
 void k_outb(uint16_t port, uint8_t value);
 void k_outw(uint16_t port, uint16_t value);

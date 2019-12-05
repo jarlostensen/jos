@@ -75,7 +75,11 @@ typedef struct mem_pool_struct
     uint32_t    _free;      // index of first free
 } mem_pool_t;
 
-mem_pool_t*     _pool_create(void* mem, size_t size, size_t allocUnitPow2)
+// pools for different sizes of small allocations: 8, 16, 32, 64, 128, 512, 1024, 2048, 4096
+static mem_pool_t* _small_pools[9];
+static size_t _num_small_pools = sizeof(_small_pools)/sizeof(_small_pools[0]);
+
+static mem_pool_t*     _pool_create(void* mem, size_t size, size_t allocUnitPow2)
 {
     if(allocUnitPow2 < 3)
         return 0;
@@ -95,17 +99,20 @@ mem_pool_t*     _pool_create(void* mem, size_t size, size_t allocUnitPow2)
     return pool;
 }
 
-void* _pool_alloc(mem_pool_t* pool, size_t size)
+static void* _pool_alloc(mem_pool_t* pool, size_t size)
 {
     if((size_t)(1<<pool->_size_p2) < size || pool->_free == (uint32_t)~0)
+    {
+        //printf("failed test: %d < %d || 0x%x == 0xffffffff\n", 1<<pool->_size_p2, size, pool->_free);
         return 0;
+    }
     const uint32_t unit_size = 1<<pool->_size_p2;
     uint32_t* block = (uint32_t*)((uint8_t*)(pool+1) + pool->_free*unit_size);
     pool->_free = *block; // whatever next it points to
     return block;
 }
 
-void _pool_free(mem_pool_t* pool, void* block)
+static void _pool_free(mem_pool_t* pool, void* block)
 {
     if(!pool || !block)
         return;
@@ -116,7 +123,12 @@ void _pool_free(mem_pool_t* pool, void* block)
     *free = (uint32_t)((uintptr_t)fblock - (uintptr_t)(pool+1))/unit_size;
 }
 
-void _pool_clear(mem_pool_t* pool)
+static bool _pool_in_pool(mem_pool_t* pool, void* ptr)
+{
+    return ((uintptr_t)ptr > (uintptr_t)(pool+1)) && ((uintptr_t)ptr < ((uintptr_t)(pool+1) + (1 << pool->_size_p2)));
+}
+
+static __attribute__((unused)) void _pool_clear(mem_pool_t* pool)
 {
     pool->_free = 0;
     uint32_t* block = (uint32_t*)((uint8_t*)(pool+1));
@@ -144,6 +156,7 @@ static inline void _flush_tlb_single(uintptr_t addr)
 
 void _k_mem_page_fault_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
 {
+    JOS_BOCHS_DBGBREAK();
     unsigned long virt;
     asm volatile ( "mov %%cr2, %0" : "=r"(virt) );
     printf("\npage fault @ 0x%x [0x%x:0x%x] error = 0x%x...", virt, cs,eip, error_code);    
@@ -216,7 +229,7 @@ void _k_mem_map(uintptr_t virt, uintptr_t phys)
     //TODO: error? or do we allow re-mapping?
 }
 
-uintptr_t k_mem_valloc(size_t size, int flags)
+void* k_mem_valloc(size_t size, int flags)
 {    
     const size_t frames = (size >> 12) + (size & 0xfff) ? 1:0;
     if(!size || _avail_frames<frames)
@@ -236,7 +249,7 @@ uintptr_t k_mem_valloc(size_t size, int flags)
         JOS_ASSERT(false);
         break;
     }
-    return ptr;
+    return (void*)ptr;
 }
 
 void k_mem_init(struct multiboot_info *mboot)
@@ -284,10 +297,59 @@ void k_mem_init(struct multiboot_info *mboot)
             virt -= 0x1000;
             _k_move_stack(virt);
 
+            // set up pools            
+#define CREATE_SMALL_POOL(i, size, pow2)\
+            _small_pools[i] = _pool_create((void*)_valloc_frame_ptr, size, pow2);\
+            _valloc_frame_ptr += size
+
+            CREATE_SMALL_POOL(0, 512*8, 3);
+            CREATE_SMALL_POOL(1, 512*16, 4);
+            CREATE_SMALL_POOL(2, 512*32, 5);
+            CREATE_SMALL_POOL(3, 1024*64, 6);
+            CREATE_SMALL_POOL(4, 1024*128, 7);
+            CREATE_SMALL_POOL(5, 1024*512, 8);
+            CREATE_SMALL_POOL(6, 1024*1024, 9);
+            CREATE_SMALL_POOL(7, 512*2048, 10);
+            CREATE_SMALL_POOL(8, 128*4096, 11);
+
             return;
         }
     }        
 
     JOS_KTRACE("error: no available RAM or RAM information\n");
     k_panic();
+}
+
+void* k_mem_alloc(size_t size)
+{
+    if(!size)
+        return 0;
+    void* ptr = 0;
+    size_t pow2 = 3;
+    do
+    {
+        if(size < (1u<<pow2))
+        {
+            mem_pool_t* pool = _small_pools[pow2-3];
+            ptr = _pool_alloc(pool,size);
+            break;
+        }
+        ++pow2;
+    }
+    while(pow2 < 12);
+    return ptr;
+}
+
+void k_mem_free(void* ptr)
+{
+    if(!ptr)
+        return;
+    for(size_t n = 0; n < _num_small_pools; ++n)
+    {
+        if(_pool_in_pool(_small_pools[n],ptr))
+        {
+            _pool_free(_small_pools[n], ptr);
+            return;
+        }
+    }
 }

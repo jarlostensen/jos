@@ -31,7 +31,7 @@ section .bss
 global _k_stack_top
 align 16
     _stack_bottom:
-    resb 16384
+    resb 4096
     _k_stack_top:
 
 ; this is our boot page directory used to map our high kernel virtual addresses to physical memory.

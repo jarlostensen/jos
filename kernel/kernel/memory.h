@@ -19,6 +19,9 @@ enum k_mem_valloc_flags_enum
     kMemValloc_Commit,
 };
 // allocate size bytes of virtual memory, or 0 if not enough available
-uintptr_t k_mem_valloc(size_t size, int flags);
+void* k_mem_valloc(size_t size, int flags);
+
+void* k_mem_alloc(size_t size);
+void k_mem_free(void* ptr);
 
 #endif // JOS_MEMORY_H
