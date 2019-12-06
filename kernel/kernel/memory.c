@@ -116,10 +116,10 @@ static void _pool_free(mem_pool_t* pool, void* block)
 {
     if(!pool || !block)
         return;
-    const uint32_t unit_size = 1<<pool->_size_p2;
-    uint32_t* free = (uint32_t*)((uint8_t*)(pool+1) + pool->_free*unit_size);
+    const uint32_t unit_size = 1<<pool->_size_p2;    
     uint32_t* fblock = (uint32_t*)block;
-    *fblock = *free;
+    *fblock = pool->_free;
+    uint32_t* free = (uint32_t*)((uint8_t*)(pool+1) + pool->_free*unit_size);
     *free = (uint32_t)((uintptr_t)fblock - (uintptr_t)(pool+1))/unit_size;
 }
 
@@ -300,7 +300,8 @@ void k_mem_init(struct multiboot_info *mboot)
             // set up pools            
 #define CREATE_SMALL_POOL(i, size, pow2)\
             _small_pools[i] = _pool_create((void*)_valloc_frame_ptr, size, pow2);\
-            _valloc_frame_ptr += size
+            _valloc_frame_ptr += size;\
+            JOS_ASSERT(_valloc_frame_ptr < kVirtMapEnd)
 
             CREATE_SMALL_POOL(0, 512*8, 3);
             CREATE_SMALL_POOL(1, 512*16, 4);
