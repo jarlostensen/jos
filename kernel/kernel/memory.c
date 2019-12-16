@@ -1,5 +1,7 @@
 #include "kernel_detail.h"
 #include "memory.h"
+#include "arena_allocator.h"
+#include "fixed_allocator.h"
 #include "interrupts.h"
 #include "multiboot.h"
 #include <stdio.h>
@@ -65,81 +67,10 @@ static page_frame_alloc_t* _page_frame_alloc_ptr = (page_frame_alloc_t*)&_k_page
 static size_t _avail_frames = 0;
 static uintptr_t _valloc_frame_ptr = (uintptr_t)&_k_virt_end;
 
-// ====================================================================================
-// fixed size pool allocator
-
-typedef struct mem_pool_struct
-{
-    uint8_t     _size_p2;   // power of two unit allocation size
-    size_t      _count;
-    uint32_t    _free;      // index of first free
-} mem_pool_t;
-
+static vmem_arena_t*   _vmem_arena = 0;
 // pools for different sizes of small allocations: 8, 16, 32, 64, 128, 512, 1024, 2048, 4096
-static mem_pool_t* _small_pools[9];
+static vmem_fixed_t* _small_pools[9];
 static size_t _num_small_pools = sizeof(_small_pools)/sizeof(_small_pools[0]);
-
-static mem_pool_t*     _pool_create(void* mem, size_t size, size_t allocUnitPow2)
-{
-    if(allocUnitPow2 < 3)
-        return 0;
-    mem_pool_t* pool = (mem_pool_t*)mem;
-    pool->_size_p2 = allocUnitPow2;
-    size -= sizeof(mem_pool_t);
-    pool->_count = size / (1<<allocUnitPow2);
-    pool->_free = 0;
-    uint32_t* block = (uint32_t*)((uint8_t*)(pool+1));
-    const uint32_t unit_size = 1<<pool->_size_p2;
-    for(size_t n = 1; n < pool->_count; ++n)
-    {
-        *block = (uint32_t)n;
-        block += (unit_size >> 2);
-    }
-    *block = ~0;
-    return pool;
-}
-
-static void* _pool_alloc(mem_pool_t* pool, size_t size)
-{
-    if((size_t)(1<<pool->_size_p2) < size || pool->_free == (uint32_t)~0)
-    {
-        //printf("failed test: %d < %d || 0x%x == 0xffffffff\n", 1<<pool->_size_p2, size, pool->_free);
-        return 0;
-    }
-    const uint32_t unit_size = 1<<pool->_size_p2;
-    uint32_t* block = (uint32_t*)((uint8_t*)(pool+1) + pool->_free*unit_size);
-    pool->_free = *block; // whatever next it points to
-    return block;
-}
-
-static void _pool_free(mem_pool_t* pool, void* block)
-{
-    if(!pool || !block)
-        return;
-    const uint32_t unit_size = 1<<pool->_size_p2;    
-    uint32_t* fblock = (uint32_t*)block;
-    *fblock = pool->_free;
-    uint32_t* free = (uint32_t*)((uint8_t*)(pool+1) + pool->_free*unit_size);
-    *free = (uint32_t)((uintptr_t)fblock - (uintptr_t)(pool+1))/unit_size;
-}
-
-static bool _pool_in_pool(mem_pool_t* pool, void* ptr)
-{
-    return ((uintptr_t)ptr > (uintptr_t)(pool+1)) && ((uintptr_t)ptr < ((uintptr_t)(pool+1) + (1 << pool->_size_p2)));
-}
-
-static __attribute__((unused)) void _pool_clear(mem_pool_t* pool)
-{
-    pool->_free = 0;
-    uint32_t* block = (uint32_t*)((uint8_t*)(pool+1));
-    const uint32_t unit_size = 1<<pool->_size_p2;
-    for(size_t n = 1; n < pool->_count; ++n)
-    {
-        *block = (uint32_t)n;
-        block += (unit_size >> 2);
-    }
-    *block = ~0;
-}
 
 // ====================================================================================
 
@@ -297,21 +228,24 @@ void k_mem_init(struct multiboot_info *mboot)
             virt -= 0x1000;
             _k_move_stack(virt);
 
-            // set up pools            
+            // set up allocators
+
 #define CREATE_SMALL_POOL(i, size, pow2)\
-            _small_pools[i] = _pool_create((void*)_valloc_frame_ptr, size, pow2);\
+            _small_pools[i] = vmem_fixed_create((void*)_valloc_frame_ptr, size, pow2);\
             _valloc_frame_ptr += size;\
             JOS_ASSERT(_valloc_frame_ptr < kVirtMapEnd)
 
             CREATE_SMALL_POOL(0, 512*8, 3);
             CREATE_SMALL_POOL(1, 512*16, 4);
             CREATE_SMALL_POOL(2, 512*32, 5);
-            CREATE_SMALL_POOL(3, 1024*64, 6);
-            CREATE_SMALL_POOL(4, 1024*128, 7);
-            CREATE_SMALL_POOL(5, 1024*512, 8);
-            CREATE_SMALL_POOL(6, 1024*1024, 9);
-            CREATE_SMALL_POOL(7, 512*2048, 10);
-            CREATE_SMALL_POOL(8, 128*4096, 11);
+            CREATE_SMALL_POOL(3, 512*64, 6);
+            
+            // the rest, up to 1 meg for the stack
+            size_t arena_size = (virt - 0x100000) - _valloc_frame_ptr;            
+            _vmem_arena = vmem_arena_create((void*)_valloc_frame_ptr, arena_size);
+            _valloc_frame_ptr += arena_size;
+
+            JOS_KTRACE("mem: %d KB in %d frames allocated for pools, ending at 0x%x\n", arena_size/1024, arena_size>>12, (uintptr_t)_valloc_frame_ptr);
 
             return;
         }
@@ -326,18 +260,27 @@ void* k_mem_alloc(size_t size)
     if(!size)
         return 0;
     void* ptr = 0;
-    size_t pow2 = 3;
-    do
+    if(size>64)
     {
-        if(size < (1u<<pow2))
-        {
-            mem_pool_t* pool = _small_pools[pow2-3];
-            ptr = _pool_alloc(pool,size);
-            break;
-        }
-        ++pow2;
+        ptr = vmem_arena_alloc(_vmem_arena, size);
     }
-    while(pow2 < 12);
+    else
+    {
+        size_t pow2 = 3;
+        do
+        {
+            if(size < (1u<<pow2))
+            {
+                vmem_fixed_t* pool = _small_pools[pow2-3];
+                ptr = vmem_fixed_alloc(pool,size);
+                break;
+            }
+            ++pow2;
+        }
+        while(pow2 < 12);
+    }
+    if(ptr)
+        memset(ptr,0xcd,size);
     return ptr;
 }
 
@@ -347,10 +290,11 @@ void k_mem_free(void* ptr)
         return;
     for(size_t n = 0; n < _num_small_pools; ++n)
     {
-        if(_pool_in_pool(_small_pools[n],ptr))
+        if(vmem_fixed_in_pool(_small_pools[n],ptr))
         {
-            _pool_free(_small_pools[n], ptr);
+            vmem_fixed_free(_small_pools[n], ptr);
             return;
         }
     }
+    vmem_arena_free(_vmem_arena, ptr);
 }

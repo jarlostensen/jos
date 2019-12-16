@@ -6,6 +6,13 @@
 #include <stdbool.h>
 #include "../include/kernel/kernel.h"
 
+#ifdef __GNUC__
+#define JOS_PRIVATE_FUNC __attribute__((unused)) static
+#else
+#define JOS_PRIVATE_FUNC static
+#endif
+
+
 int k_is_protected_mode();
 void k_panic();
 uint32_t k_eflags();

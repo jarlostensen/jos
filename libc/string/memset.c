@@ -2,16 +2,27 @@
 #include <stdint.h>
 
 void* memset(void* bufptr, int value, size_t size) {
-	uint32_t* buf = (uint32_t*) bufptr;
-	size_t rem = size & 3;
-	size >>= 2;
-	uint32_t v32 = (uint8_t)value;
-	v32 |= (v32 << 8);
-	v32 |= (v32 << 16);
-	for (size_t i = 0; i < size; i++)
-		*buf++ = v32;
-	unsigned char* cbuf = (unsigned char*)buf;
-	while(rem--)
+	uint32_t v32 = (value * 0x01010101);
+	size_t s = size >> 3;
+	uint32_t* ptr32 = (uint32_t*)bufptr;
+	while(s--)
+	{
+		*ptr32++ = v32;
+		*ptr32++ = v32;
+	}
+
+	s = (size & 7)>>2;
+	while(s--)
+	{
+		*ptr32++ = v32;
+	}
+
+	s = size & 3;
+	unsigned char* cbuf = (unsigned char*)ptr32;
+	while(s--)
+	{
 		*cbuf++ = (unsigned char)value;
+	}
+
 	return bufptr;
 }
