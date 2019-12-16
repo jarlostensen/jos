@@ -39,6 +39,37 @@ volatile uint64_t _k_ms_elapsed;
 // kernel.asm
 extern void _k_update_clock();
 
+typedef struct {
+    
+    uint32_t    _hz;
+    uint16_t    _divisor;
+    uint64_t    _ms_per_tick_fp32;
+
+} clock_pit_interval_t;
+
+JOS_PRIVATE_FUNC clock_pit_interval_t _make_pit_interval(uint32_t hz)
+{
+    clock_pit_interval_t    info;
+    info._hz = hz;
+    
+    double ddiv = (double)CLOCK_FREQ/(double)hz;
+    // round up 
+    ddiv = (ddiv+0.5);
+    // divisor for PIT
+    info._divisor = (uint16_t)(ddiv);    
+    // scale to 32.32 fixed point
+    ddiv *= (double)ONE_FP32;
+    info._ms_per_tick_fp32 = (uint64_t)(((ddiv * 1000.0)/(double)CLOCK_FREQ));
+
+    return info;
+}
+
+JOS_PRIVATE_FUNC void _set_divisor(clock_pit_interval_t* info, uint16_t port)
+{
+    k_outb(port, info->_divisor & 0xff);
+    k_outb(port, (info->_divisor>>8) & 0xff);
+}
+
 // See
 // https://github.com/torvalds/linux/blob/master/arch/x86/kernel/tsc.c
 
@@ -61,9 +92,11 @@ uint64_t k_clock_get_ms_res()
     return (uint64_t)_k_clock_freq_whole<<32 | (uint64_t)_k_clock_freq_frac;
 }
 
-void k_clock_wait_oneshot_one_period()
+// wait for one 18 Hz period (~55ms)
+static void _wait_one_55ms_interval()
 {
     k_outb(PIT_COMMAND, PIT_COUNTER_2 | PIT_MODE_ONESHOT);
+    // set the timer to be the max interval, i.e. 18.2 Hz
     k_outb(PIT_DATA_2, 0xff);
     k_outb(PIT_DATA_2, 0xff);
 
@@ -89,14 +122,14 @@ uint64_t _k_clock_est_cpu_freq()
     
     // not sure what the right number should be?
     int tries = 3;
-    //NOTE: this is assuming the 18 Hz standard clock used
+    //NOTE: this is assuming the 18.2 Hz interval is programmed by the one-shot-period timer 
     const uint64_t elapsed_ms = 55;
     uint64_t min_cpu_hz = ~(uint64_t)0;
     uint64_t max_cpu_hz = 0;
     do
     {
         uint64_t rdtsc_start = __rdtsc();
-        k_clock_wait_oneshot_one_period();
+        _wait_one_55ms_interval();
         uint64_t rdtsc_end = __rdtsc();
         const uint64_t cpu_hz = 1000*(rdtsc_end - rdtsc_start)/elapsed_ms;
         if(cpu_hz < min_cpu_hz)
@@ -115,22 +148,14 @@ uint64_t k_clock_ms_to_cycles(uint64_t ms)
 
 void k_clock_init()
 {
-    // clock divisor
-    double ddiv = (double)CLOCK_FREQ/(double)HZ;
-    // round up 
-    ddiv = (ddiv+0.5);
-    // divisor for PIT
-    uint16_t div16 = (uint16_t)(ddiv);
-    // scale to 32.32 fixed point
-    ddiv *= (double)ONE_FP32;
-    // milliseconds per tick
-    uint64_t scaled = (((ddiv * 1000.0)/(double)CLOCK_FREQ));
-    // whole and fractional part
-    _k_clock_freq_whole = (uint32_t)(scaled >> 32);
-    _k_clock_freq_frac = (uint32_t)(scaled & 0x00000000ffffffff);
+    clock_pit_interval_t info = _make_pit_interval(HZ);
+
+    // whole and fractional part for our interrupt handler
+    _k_clock_freq_whole = (uint32_t)(info._ms_per_tick_fp32 >> 32);
+    _k_clock_freq_frac = (uint32_t)(info._ms_per_tick_fp32 & 0x00000000ffffffff);
     _k_ms_elapsed = 0;
 
-    JOS_KTRACE("k_init_clock: starting PIT for %d HZ with divider %d, resolution is %d.%d\n", HZ, (int)div16, _k_clock_freq_whole, _k_clock_freq_frac);
+    JOS_KTRACE("k_init_clock: starting PIT for %d HZ with divider %d, resolution is %d.%d\n", HZ, (int)info._divisor, _k_clock_freq_whole, _k_clock_freq_frac);
 
     // run once to initialise counters
     _k_update_clock();
@@ -138,9 +163,8 @@ void k_clock_init()
     // initialise PIT
     k_outb(PIT_COMMAND, PIT_COUNTER_0 | PIT_MODE_SQUAREWAVE | PIT_RL_DATA);
     // set frequency         
-    k_outb(PIT_DATA_0, div16 & 0xff);
-    k_outb(PIT_DATA_0, (div16>>8) & 0xff);
-
+    _set_divisor(&info, PIT_DATA_0);
+    
     // start the clock IRQ
     k_set_irq_handler(0,clock_irq_handler);
     k_enable_irq(0);
