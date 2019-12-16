@@ -152,11 +152,11 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
     JOS_KTRACE("test: allocated %d bytes @ 0x%x\n", kSize, mem);
     k_mem_free(mem);
 
-    uint32_t ms = k_get_ms_since_boot();
+    uint32_t ms = k_clock_ms_since_boot();
     printf("waiting for a second starting at %d...", ms);    
     while(ms<=1000)
     {
-        ms = k_get_ms_since_boot();
+        ms = k_clock_ms_since_boot();
         k_pause();
     }    
     printf("ok, we're at %dms\n", ms);
@@ -165,12 +165,13 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
     printf("CPU clocked to %lld MHz\n", cpu_freq/1000000);
 
     const uint64_t ms_to_wait = 2;
-    printf("rdtsc timer wait for %lld @ %lld...", ms_to_wait, k_get_ms_since_boot());
+    printf("rdtsc timer wait for %lld @ %lld...", ms_to_wait, k_clock_ms_since_boot(), __rdtsc());
+    uint64_t rdtsc_start = __rdtsc();
     uint64_t rdtsc_end = __rdtsc() + (cpu_freq * ms_to_wait + 500)/1000;
     while(__rdtsc() <= rdtsc_end)
         k_pause();
     
-    printf("now = %lld", k_get_ms_since_boot());
+    printf("now = %lld, delta rdtsc = %lld", k_clock_ms_since_boot(), __rdtsc()-rdtsc_start);
 
     JOS_KTRACE("halting\n");
     k_panic();

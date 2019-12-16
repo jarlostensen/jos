@@ -280,7 +280,7 @@ void* k_mem_alloc(size_t size)
         while(pow2 < 12);
     }
     if(ptr)
-        memset(ptr,0xcd,size);
+        memset(ptr,0,size);
     return ptr;
 }
 

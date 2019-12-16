@@ -35,6 +35,7 @@ uint32_t _k_clock_freq_whole = 0;
 volatile uint32_t _k_clock_frac = 0;
 volatile uint32_t _k_clock_whole = 0;
 volatile uint64_t _k_ms_elapsed;
+
 // kernel.asm
 extern void _k_update_clock();
 
@@ -49,7 +50,7 @@ static void clock_irq_handler(int i)
     //TODO: check if any outstanding timers are pending etc.
 }
 
-uint64_t k_get_ms_since_boot()
+uint64_t k_clock_ms_since_boot()
 {
     return _k_ms_elapsed;
 }
@@ -60,13 +61,13 @@ uint64_t k_clock_get_ms_res()
     return (uint64_t)_k_clock_freq_whole<<32 | (uint64_t)_k_clock_freq_frac;
 }
 
-void k_wait_oneshot_one_period()
+void k_clock_wait_oneshot_one_period()
 {
     k_outb(PIT_COMMAND, PIT_COUNTER_2 | PIT_MODE_ONESHOT);
     k_outb(PIT_DATA_2, 0xff);
     k_outb(PIT_DATA_2, 0xff);
 
-    //TODO: dig deeper, this disables the speaker, does that free up channel 2?
+    // channel 2 enable (see for example a nice overview of the 8254 here https://www.cs.usfca.edu/~cruse/cs630f08/lesson15.ppt)
     k_outb(0x61,(k_inb(0x61) & ~0x02) | 0x01);
 
     // dummy read, give time for the next edge rise
@@ -78,8 +79,14 @@ void k_wait_oneshot_one_period()
     } while(msb);
 }
 
+//TODO: this needs to be moved into cpu.h/c and made per-core
 uint64_t _k_clock_est_cpu_freq()
 {
+    static uint64_t _est_freq = 0;
+
+    if(_est_freq)
+        return _est_freq;
+    
     // not sure what the right number should be?
     int tries = 3;
     //NOTE: this is assuming the 18 Hz standard clock used
@@ -89,7 +96,7 @@ uint64_t _k_clock_est_cpu_freq()
     do
     {
         uint64_t rdtsc_start = __rdtsc();
-        k_wait_oneshot_one_period();
+        k_clock_wait_oneshot_one_period();
         uint64_t rdtsc_end = __rdtsc();
         const uint64_t cpu_hz = 1000*(rdtsc_end - rdtsc_start)/elapsed_ms;
         if(cpu_hz < min_cpu_hz)
@@ -97,8 +104,13 @@ uint64_t _k_clock_est_cpu_freq()
         if(cpu_hz > max_cpu_hz)
             max_cpu_hz = cpu_hz;
     } while(tries--);
+    // estimated frequency is average of our measurements, seems fair...
+    return _est_freq = (max_cpu_hz + min_cpu_hz)/2;
+}
 
-    return (max_cpu_hz + min_cpu_hz)/2;
+uint64_t k_clock_ms_to_cycles(uint64_t ms)
+{
+    return  (_k_clock_est_cpu_freq() * ms + 500)/1000;
 }
 
 void k_clock_init()
