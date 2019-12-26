@@ -174,7 +174,8 @@ vmem_arena_t*   vmem_arena_create(void* mem, size_t size)
     {
         return 0;
     }	
-    vmem_arena_t*   arena = (vmem_arena_t*)mem;
+
+	vmem_arena_t*   arena = (vmem_arena_t*)mem;
     arena->_size = arena->_capacity = size - sizeof(vmem_arena_t);
     arena->_free_head = (vmem_block_head_t*)(arena+1);
     arena->_free_head->_size = arena->_size | kVmemBlockFree;
@@ -182,19 +183,28 @@ vmem_arena_t*   vmem_arena_create(void* mem, size_t size)
     arena->_free_head->_links[1] = 0;
 	vmem_block_tail_t* tail = _vmem_tail_from_head(arena->_free_head);
 	tail->_size = _vmem_tail_free_size(arena->_free_head);
+
+	JOS_KTRACE("vmem: arena created @ 0x%x, free @ 0x%x, tail at 0x%x\n", (int)arena, (int)arena->_free_head, (int)tail);
+
     return arena;
 }
+
+#include <stdio.h>
 
 void* vmem_arena_alloc(vmem_arena_t* arena, size_t size)
 {
 	if(!size)
+	{
 		return 0;
+	}
 
 	// cap to minimum size or align to 4 bytes
 	size = (size < JOS_VMEM_BLOCK_MIN_SIZE) ? JOS_VMEM_BLOCK_MIN_SIZE : (size+3)&~3;
 
 	if(!arena || arena->_size<size+JOS_VMEM_ARENA_ALLOC_OVERHEAD )
+	{
         return 0;
+	}
     
     vmem_block_head_t* free = arena->_free_head;
     while(free)
@@ -203,7 +213,7 @@ void* vmem_arena_alloc(vmem_arena_t* arena, size_t size)
             break;
         free = free->_links[1];
     }
-    
+
     if(free)
     {
         // unlink this free block (we'll insert a new one below if we split)
@@ -235,7 +245,7 @@ void* vmem_arena_alloc(vmem_arena_t* arena, size_t size)
 		// return pointer to area betyond header
 		++free;
     }
-    
+	
     return free;
 }
 

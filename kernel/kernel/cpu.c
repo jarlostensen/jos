@@ -146,14 +146,14 @@ static void _smp_init()
                         case 3:
                         {
                             // I/O int assignment
-                            JOS_KTRACE("I/O int assignment\n");
+                            //JOS_KTRACE("I/O int assignment\n");
                             oem_entry_ptr += 8;
                         }
                         break;
                         case 4:
                         {
                             // local int assignment
-                            JOS_KTRACE("local int assignment\n");
+                           // JOS_KTRACE("local int assignment\n");
                             oem_entry_ptr += 8;
                         }
                         break;

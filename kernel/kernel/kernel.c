@@ -12,13 +12,14 @@
 #include "memory.h"
 #include "cpu.h"
 #include "serial.h"
+#include "tasks.h"
 
 // =======================================================
 
 gdt_entry_t _k_gdt[] = {
     // null
     { .limit_low = 0, .base_low = 0, .base_middle = 0, .access.byte = 0, .granularity.byte = 0, .base_high = 0 },
-    // kernel code
+    // kernel code MUST BE JOS_KERNEL_CS_SELECTOR
     { .limit_low = 0xffff, .base_low = 0, .base_middle = 0, .access.byte = 0b10011010, .granularity.fields = { .limit_high = 0xf, .size = 1, .granularity = 1 }, .base_high = 0 },
     // kernel data
     { .limit_low = 0xffff, .base_low = 0, .base_middle = 0, .access.byte = 0b10010010, .granularity.byte = 0b11001111, .base_high = 0 },
@@ -96,11 +97,52 @@ static void isr_6_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
 {
     (void)error_code;
     printf("\tinvalid opcode @ 0x%x:0x%x\n",cs,eip);
+    JOS_BOCHS_DBGBREAK();
 }
 
 static void irq_1_handler(int irq)
 {
     printf("\tIRQ %d handler, keyboard\n", irq);
+}
+
+static void _root_task(void* obj)
+{
+    (void)obj;
+    // ================================================================    
+    _k_enable_interrupts();
+
+    printf("\n-------------- root task\n");
+    
+    const size_t kSize = 5000;
+    void* mem = k_mem_alloc(kSize);
+    memset(mem, 0xff, kSize);
+    //printf("test: allocated %d bytes @ 0x%x\n", kSize, (int)mem);
+    
+    uint32_t ms = k_clock_ms_since_boot();
+    printf("waiting for a second starting at %d...", ms);    
+    while(ms<=1000)
+    {
+        ms = k_clock_ms_since_boot();
+        k_pause();
+    }    
+    printf("ok, we're at %dms\n", ms);
+    
+    uint64_t cpu_freq = _k_clock_est_cpu_freq();
+    printf("CPU clocked to %lld MHz\n", cpu_freq/1000000);
+
+    const uint64_t ms_to_wait = 2;
+    printf("rdtsc timer wait for %lld @ %lld...", ms_to_wait, k_clock_ms_since_boot(), __rdtsc());
+    uint64_t rdtsc_start = __rdtsc();
+    uint64_t rdtsc_end = __rdtsc() + (cpu_freq * ms_to_wait + 500)/1000;
+    while(__rdtsc() <= rdtsc_end)
+        k_pause();
+    
+    printf("now = %lld, delta rdtsc = %lld", k_clock_ms_since_boot(), __rdtsc()-rdtsc_start);
+
+    k_mem_free(mem);
+
+    JOS_KTRACE("halting\n");
+    k_panic();
 }
 
 void _k_main(uint32_t magic, multiboot_info_t *mboot)
@@ -143,36 +185,6 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
     k_enable_irq(1);
     k_clock_init();
 
-    // ================================================================    
-    _k_enable_interrupts();
-    
-    const size_t kSize = 972;
-    void* mem = k_mem_alloc(kSize);
-    memset(mem, 0xff, kSize);
-    JOS_KTRACE("test: allocated %d bytes @ 0x%x\n", kSize, mem);
-    k_mem_free(mem);
-
-    uint32_t ms = k_clock_ms_since_boot();
-    printf("waiting for a second starting at %d...", ms);    
-    while(ms<=1000)
-    {
-        ms = k_clock_ms_since_boot();
-        k_pause();
-    }    
-    printf("ok, we're at %dms\n", ms);
-    
-    uint64_t cpu_freq = _k_clock_est_cpu_freq();
-    printf("CPU clocked to %lld MHz\n", cpu_freq/1000000);
-
-    const uint64_t ms_to_wait = 2;
-    printf("rdtsc timer wait for %lld @ %lld...", ms_to_wait, k_clock_ms_since_boot(), __rdtsc());
-    uint64_t rdtsc_start = __rdtsc();
-    uint64_t rdtsc_end = __rdtsc() + (cpu_freq * ms_to_wait + 500)/1000;
-    while(__rdtsc() <= rdtsc_end)
-        k_pause();
-    
-    printf("now = %lld, delta rdtsc = %lld", k_clock_ms_since_boot(), __rdtsc()-rdtsc_start);
-
-    JOS_KTRACE("halting\n");
-    k_panic();
+    k_tasks_init(_root_task);
+    //_root_task(0);
 }

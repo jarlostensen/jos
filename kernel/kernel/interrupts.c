@@ -123,26 +123,6 @@ extern void _k_irq14();
 extern void _k_irq15();
 extern void _k_irq16();
 
-// ia-32 dev manual 6-12
-struct isr_stack_struct
-{    
-    // pushed by isr handler stub
-    uint32_t    ds;
-    uint32_t    edi, esi, ebp, esp, ebx, edx, ecx, eax;
-    uint32_t    handler_id;
-    
-    // pushed by CPU
-    uint32_t    error_code;
-    uint32_t    eip;    
-    uint32_t    cs;
-    uint32_t    eflags;
-    // iff privilege level switch
-    uint32_t    _esp;
-    uint32_t    _ss;
-};
-typedef struct isr_stack_struct isr_stack_t;
-
-
 // in arch/i386/interrupts.asm
 extern void _k_load_idt(void);
 extern void _k_store_idt(idt32_descriptor_t* desc);

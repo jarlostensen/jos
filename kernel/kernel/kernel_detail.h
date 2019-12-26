@@ -24,6 +24,9 @@ uint64_t _k_clock_est_cpu_freq();
 // wait by doing a nop-write to port 0x80 (POST)
 void k_io_wait(void);
 
+#define JOS_KERNEL_CS_SELECTOR 0x08
+#define JOS_KERNEL_DS_SELECTOR 0x10
+
 typedef enum alignment_enum
 {
     kNone = 0,

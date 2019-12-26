@@ -3,6 +3,24 @@
 
 #include <stdbool.h>
 
+// ia-32 dev manual 6-12
+typedef struct isr_stack_struct
+{    
+    // pushed by isr handler stub
+    uintptr_t    ds;
+    uintptr_t    edi, esi, ebp, esp, ebx, edx, ecx, eax;
+    uintptr_t    handler_id;
+    
+    // pushed by CPU 
+    uintptr_t    error_code; //< can also be pushed by stub
+    uintptr_t    eip;    
+    uintptr_t    cs;
+    uintptr_t    eflags;
+    // iff privilege level switch
+    //TODO:uintptr_t    _esp;
+    //TODO: uintptr_t    _ss;
+} isr_stack_t;
+
 // initialise the interrupt module
 void _k_init_isrs();
 // effectively load IDT

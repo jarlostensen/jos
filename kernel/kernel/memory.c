@@ -65,12 +65,11 @@ void _k_page_frame_alloc_ptr(void);
 // will map to the above
 static page_frame_alloc_t* _page_frame_alloc_ptr = (page_frame_alloc_t*)&_k_page_frame_alloc_ptr;
 static size_t _avail_frames = 0;
-static uintptr_t _valloc_frame_ptr = (uintptr_t)&_k_virt_end;
 
 static vmem_arena_t*   _vmem_arena = 0;
 // pools for different sizes of small allocations: 8, 16, 32, 64, 128, 512, 1024, 2048, 4096
 static vmem_fixed_t* _small_pools[9];
-static size_t _num_small_pools = sizeof(_small_pools)/sizeof(_small_pools[0]);
+__attribute__((unused)) static size_t _num_small_pools = sizeof(_small_pools)/sizeof(_small_pools[0]);
 
 // ====================================================================================
 
@@ -86,9 +85,9 @@ static inline void _flush_tlb_single(uintptr_t addr)
 #define PF_INSTR_FETCH      0x10
 
 void _k_mem_page_fault_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
-{
-    JOS_BOCHS_DBGBREAK();
+{    
     unsigned long virt;
+    JOS_BOCHS_DBGBREAK();
     asm volatile ( "mov %%cr2, %0" : "=r"(virt) );
     printf("\npage fault @ 0x%x [0x%x:0x%x] error = 0x%x...", virt, cs,eip, error_code);    
 }
@@ -160,29 +159,6 @@ void _k_mem_map(uintptr_t virt, uintptr_t phys)
     //TODO: error? or do we allow re-mapping?
 }
 
-void* k_mem_valloc(size_t size, int flags)
-{    
-    const size_t frames = (size >> 12) + (size & 0xfff) ? 1:0;
-    if(!size || _avail_frames<frames)
-        return 0;
-    uintptr_t ptr = 0;
-    switch(flags)
-    {
-        case kMemValloc_Commit:
-        {
-            _avail_frames -= frames;
-            ptr = _valloc_frame_ptr;
-            _valloc_frame_ptr += frames*0x1000;
-        }
-        break;
-        case kMemValloc_Reserve:
-        //TODO:
-        JOS_ASSERT(false);
-        break;
-    }
-    return (void*)ptr;
-}
-
 void k_mem_init(struct multiboot_info *mboot)
 {
     // end of kernel + 4Megs to skip past area used by page tables
@@ -202,9 +178,11 @@ void k_mem_init(struct multiboot_info *mboot)
                 JOS_KTRACE("mem: available 0x%x bytes @ 0x%x\n",
                             (unsigned) mmap->len,
                             (unsigned) mmap->addr);
+                // just look for the region in which our phys address lives
                 if( phys > mmap->addr && phys < mmap->addr+mmap->len)
                 {
                     avail = (size_t)(mmap->addr+mmap->len) - (size_t)phys;                    
+                    break;
                 }
             }
         }
@@ -213,8 +191,9 @@ void k_mem_init(struct multiboot_info *mboot)
             const uintptr_t kVirtMapEnd = 0xffc00000;
             
             _avail_frames = avail >> 12;
-            // map everything above the page table area to start at the virtual end-of-kernel address
-            uintptr_t virt = _valloc_frame_ptr;
+            // map everything above the end of the kernel code
+            // NOTE: this leaves a "hole" where we've allocated frames for the master page table
+            uintptr_t virt = (uintptr_t)&_k_virt_end;
             do
             {
                 _k_mem_map(virt, phys);
@@ -226,7 +205,7 @@ void k_mem_init(struct multiboot_info *mboot)
 
             // move our stack to the top of mapped memory where it can grow downwards towards the heap
             virt -= 0x1000;
-            _k_move_stack(virt);
+            // _k_move_stack(virt);
 
             // set up allocators
 
@@ -235,18 +214,16 @@ void k_mem_init(struct multiboot_info *mboot)
             _valloc_frame_ptr += size;\
             JOS_ASSERT(_valloc_frame_ptr < kVirtMapEnd)
 
-            CREATE_SMALL_POOL(0, 512*8, 3);
-            CREATE_SMALL_POOL(1, 512*16, 4);
-            CREATE_SMALL_POOL(2, 512*32, 5);
-            CREATE_SMALL_POOL(3, 512*64, 6);
+            //zzz: CREATE_SMALL_POOL(0, 512*8, 3);
+            //zzz: CREATE_SMALL_POOL(1, 512*16, 4);
+            //zzz: CREATE_SMALL_POOL(2, 512*32, 5);
+            //zzz: CREATE_SMALL_POOL(3, 512*64, 6);
             
-            // the rest, up to 1 meg for the stack
-            size_t arena_size = (virt - 0x100000) - _valloc_frame_ptr;            
-            _vmem_arena = vmem_arena_create((void*)_valloc_frame_ptr, arena_size);
-            _valloc_frame_ptr += arena_size;
-
-            JOS_KTRACE("mem: %d KB in %d frames allocated for pools, ending at 0x%x\n", arena_size/1024, arena_size>>12, (uintptr_t)_valloc_frame_ptr);
-
+            // eat the rest of memory for the heap (we'll allocate stacks inside of it when we create tasks)            
+            size_t arena_size = (virt - (uintptr_t)&_k_virt_end) & ~0xfff;
+            _vmem_arena = vmem_arena_create((void*)((uintptr_t)&_k_virt_end), arena_size);
+            JOS_KTRACE("mem: %d KB in %d frames allocated for pools, starts at 0x%x, ends at 0x%x\n", arena_size/1024, arena_size>>12, (uintptr_t)&_k_virt_end, (uintptr_t)virt);
+            
             return;
         }
     }        
@@ -260,9 +237,10 @@ void* k_mem_alloc(size_t size)
     if(!size)
         return 0;
     void* ptr = 0;
+    
     if(size>64)
     {
-        ptr = vmem_arena_alloc(_vmem_arena, size);
+        ptr = vmem_arena_alloc(_vmem_arena, size);        
     }
     else
     {
@@ -281,6 +259,7 @@ void* k_mem_alloc(size_t size)
     }
     if(ptr)
         memset(ptr,0,size);
+    
     return ptr;
 }
 
@@ -288,13 +267,13 @@ void k_mem_free(void* ptr)
 {
     if(!ptr)
         return;
-    for(size_t n = 0; n < _num_small_pools; ++n)
-    {
-        if(vmem_fixed_in_pool(_small_pools[n],ptr))
-        {
-            vmem_fixed_free(_small_pools[n], ptr);
-            return;
-        }
-    }
+    // for(size_t n = 0; n < _num_small_pools; ++n)
+    // {
+    //     if(vmem_fixed_in_pool(_small_pools[n],ptr))
+    //     {
+    //         vmem_fixed_free(_small_pools[n], ptr);
+    //         return;
+    //     }
+    // }    
     vmem_arena_free(_vmem_arena, ptr);
 }

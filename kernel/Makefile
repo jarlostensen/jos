@@ -38,6 +38,7 @@ kernel/cpu.o \
 kernel/serial.o \
 kernel/ktrace.o \
 kernel/memory.o \
+kernel/tasks.o \
 
 OBJS=\
 $(ARCHDIR)/crti.o \
