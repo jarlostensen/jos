@@ -107,17 +107,15 @@ static void irq_1_handler(int irq)
 
 static void _root_task(void* obj)
 {
-    (void)obj;
     // ================================================================    
     _k_enable_interrupts();
 
-    printf("\n-------------- root task\n");
+    printf("\n-------------- root task (0x%x)\n", obj);
     
-    //ZZZ: this causes a crash when switching into the task
-    // const size_t kSize = 5000;
-    // void* mem = k_mem_alloc(kSize);
-    // memset(mem, 0xff, kSize);
-    //printf("test: allocated %d bytes @ 0x%x\n", kSize, (int)mem);
+    const size_t kSize = 5000;
+    void* mem = k_mem_alloc(kSize);
+    memset(mem, 0xff, kSize);
+    printf("test: allocated %d bytes @ 0x%x\n", kSize, (int)mem);
     
     uint32_t ms = k_clock_ms_since_boot();
     printf("waiting for a second starting at %d...", ms);    

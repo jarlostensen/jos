@@ -24,7 +24,7 @@ static void _push_32(task_context_t* ctx, uint32_t val)
 void _task_handler(task_context_t* ctx)
 {
     //TODO: task start preamble
-JOS_BOCHS_DBGBREAK();
+    //DEBUG:printf("_task_handler 0x%x\n", ctx);
 
     // execute task body
     ctx->_task_func(ctx->_obj);
@@ -56,24 +56,29 @@ void k_tasks_init(task_func_t root)
 }
 
 unsigned int k_task_create(unsigned int pri, task_func_t func, void* obj)
-{    
-    task_context_t* ctx = (task_context_t*)k_mem_alloc(sizeof(task_context_t)+(kTaskDefaultStackSize+kTaskStackAlignment));
+{   
+    const size_t aligned_stack_size = (sizeof(isr_stack_t) + kTaskDefaultStackSize + kTaskStackAlignment-1); 
+    task_context_t* ctx = (task_context_t*)k_mem_alloc(sizeof(task_context_t)+aligned_stack_size);
+
     ctx->_stack_size = kTaskDefaultStackSize;
     ctx->_obj = obj;
     ctx->_task_func = func;
     ctx->_pri = pri;
     _tasks[_task_id++] = ctx;
     ctx->_id = _task_id;
-    // aligned stack top
-    ctx->_esp = ctx->_stack_top = (void*)(((uintptr_t)(ctx+1) + sizeof(isr_stack_t) + kTaskDefaultStackSize + (kTaskStackAlignment-1)) & ~(kTaskStackAlignment-1));
+    // aligned stack top    
+    ctx->_esp = ctx->_stack_top = (void*)( ((uintptr_t)(ctx+1) + aligned_stack_size) & ~(kTaskStackAlignment-1));
+
+    //DEBUG: printf("creating task context at 0x%x, stack size is %d bytes, top @ 0x%x\n", ctx, aligned_stack_size, ctx->_esp);
 
     // build the "stack" contents;
     // top: | ctx ptr                            |
+    //      | dummy (return address)             |
     //      | isr_stack_struct fields, up until: |  
     //      | eip/cs/flags                       |
     //    
     _push_32(ctx, (uint32_t)ctx);
-    _push_32(ctx, (uint32_t)ctx);
+    _push_32(ctx, (uint32_t)0x0badc0de);
     
     ctx->_esp = (void*)((uintptr_t)ctx->_esp - sizeof(isr_stack_t));
     isr_stack_t* stack =  (isr_stack_t*)(ctx->_esp);

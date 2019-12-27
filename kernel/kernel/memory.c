@@ -89,7 +89,7 @@ void _k_mem_page_fault_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
     unsigned long virt;
     JOS_BOCHS_DBGBREAK();
     asm volatile ( "mov %%cr2, %0" : "=r"(virt) );
-    printf("\npage fault @ 0x%x [0x%x:0x%x] error = 0x%x...", virt, cs,eip, error_code);    
+    printf("\npage fault @ 0x%x [0x%x:0x%x] error = 0x%x...", virt, cs,eip, error_code);
 }
 
 uintptr_t _k_mem_virt_to_pt_entry(uintptr_t virt)

@@ -6,6 +6,9 @@
 #include <string.h>
 
 
+//DEBUG:include <stdio.h>
+
+
 // ===============================================================
 //
 // Basic variable size block allocator
@@ -159,10 +162,15 @@ JOS_PRIVATE_FUNC void _vmem_arena_disconnect(vmem_arena_t* arena, vmem_block_hea
 	{
 		arena->_free_head = block->_links[1];		
 	}
+
 	if(block->_links[0])
+	{
 		block->_links[0]->_links[1] = block->_links[1];
+	}
+
 	if(block->_links[1])
 		block->_links[1]->_links[0] = block->_links[0];
+
 	block->_links[0] = block->_links[1] = 0;
 }
 
@@ -189,8 +197,6 @@ vmem_arena_t*   vmem_arena_create(void* mem, size_t size)
     return arena;
 }
 
-#include <stdio.h>
-
 void* vmem_arena_alloc(vmem_arena_t* arena, size_t size)
 {
 	if(!size)
@@ -216,7 +222,9 @@ void* vmem_arena_alloc(vmem_arena_t* arena, size_t size)
 
     if(free)
     {
-        // unlink this free block (we'll insert a new one below if we split)
+		//DEBUG:printf("free was 0x%x; prev = 0x%x, next = 0x%x\n", free, free->_links[0], free->_links[1]);
+
+        // unlink this free block (we'll insert a new one below if we split)		
 		_vmem_arena_disconnect(arena, free);
 		
         size_t org_size = JOS_VMEM_ABS_BLOCK_SIZE(free->_size);		
@@ -239,6 +247,8 @@ void* vmem_arena_alloc(vmem_arena_t* arena, size_t size)
             new_tail->_size = _vmem_tail_free_size(new_head);
 			new_head->_size |= kVmemBlockFree;
 			_vmem_arena_block_insert_as_free(arena, new_head);
+
+			//DEBUG:printf("new free is 0x%x\n", arena->_free_head);
         }
 		
 		arena->_size -= free->_size;
