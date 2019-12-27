@@ -113,9 +113,10 @@ static void _root_task(void* obj)
 
     printf("\n-------------- root task\n");
     
-    const size_t kSize = 5000;
-    void* mem = k_mem_alloc(kSize);
-    memset(mem, 0xff, kSize);
+    //ZZZ: this causes a crash when switching into the task
+    // const size_t kSize = 5000;
+    // void* mem = k_mem_alloc(kSize);
+    // memset(mem, 0xff, kSize);
     //printf("test: allocated %d bytes @ 0x%x\n", kSize, (int)mem);
     
     uint32_t ms = k_clock_ms_since_boot();
@@ -139,7 +140,7 @@ static void _root_task(void* obj)
     
     printf("now = %lld, delta rdtsc = %lld", k_clock_ms_since_boot(), __rdtsc()-rdtsc_start);
 
-    k_mem_free(mem);
+    //k_mem_free(mem);
 
     JOS_KTRACE("halting\n");
     k_panic();
@@ -185,6 +186,6 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
     k_enable_irq(1);
     k_clock_init();
 
+    // initialise tasks and hand over to the root task (this call never returns)
     k_tasks_init(_root_task);
-    //_root_task(0);
 }
