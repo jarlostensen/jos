@@ -29,5 +29,11 @@
     <ClInclude Include="..\kernel\kernel\collections.h">
       <Filter>kernel</Filter>
     </ClInclude>
+    <ClInclude Include="..\kernel\include\jos.h">
+      <Filter>kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="..\kernel\include\kernel\kernel.h">
+      <Filter>kernel</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <jos.h>
 
 // ====================================================================================
 // fixed size pool allocator
@@ -62,21 +63,23 @@ void vmem_fixed_free(vmem_fixed_t* pool, void* block)
 
 bool vmem_fixed_in_pool(vmem_fixed_t* pool, void* ptr)
 {
-    return ((uintptr_t)ptr > (uintptr_t)(pool+1)) && ((uintptr_t)ptr < ((uintptr_t)(pool+1) + (1 << pool->_size_p2)));
+	const uintptr_t begin = (uintptr_t)(pool+1);
+	const uintptr_t end = (uintptr_t)(begin + pool->_count*(1<<pool->_size_p2));
+    return (uintptr_t)ptr >= begin && (uintptr_t)ptr < end;
 }
 
-//__attribute__((unused)) void vmem_fixed_clear(vmem_fixed_t* pool)
-//{
-//    pool->_free = 0;
-//    uint32_t* block = (uint32_t*)((uint8_t*)(pool+1));
-//    const uint32_t unit_size = 1<<pool->_size_p2;
-//    for(size_t n = 1; n < pool->_count; ++n)
-//    {
-//        *block = (uint32_t)n;
-//        block += (unit_size >> 2);
-//    }
-//    *block = ~0;
-//}
+JOS_PRIVATE_FUNC void vmem_fixed_clear(vmem_fixed_t* pool)
+{
+    pool->_free = 0;
+    uint32_t* block = (uint32_t*)((uint8_t*)(pool+1));
+    const uint32_t unit_size = 1<<pool->_size_p2;
+    for(size_t n = 1; n < pool->_count; ++n)
+    {
+        *block = (uint32_t)n;
+        block += (unit_size >> 2);
+    }
+    *block = ~0;
+}
 
 
 #endif // JOS_FIXED_ALLOCATOR_H

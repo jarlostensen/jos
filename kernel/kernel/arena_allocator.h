@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
-
+#include <jos.h>
 
 //DEBUG:include <stdio.h>
 

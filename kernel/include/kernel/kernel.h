@@ -3,9 +3,10 @@
 #define JOS_KERNEL_H
 
 #include <stdint.h>
+#include "../jos.h"
 
-#define JOS_BOCHS_DBGBREAK() asm volatile ("xchg %bx,%bx")
-#define JOS_ASSERT(cond) if(!(cond)) {asm volatile ("xchg %bx,%bx");}
+#ifndef _JOS_LAB
+
 
 // ====================================================================================
 // tracing 
@@ -61,5 +62,13 @@ inline uint64_t __rdtsc()
     asm volatile ( "rdtsc" : "=A"(ret) );
     return ret;
 }
+
+#else
+// ====================================================================================
+// Lab build (only defined in the lab visualstudio project)
+
+#define JOS_KTRACE(...)
+
+#endif
 
 #endif // JOS_KERNEL_H

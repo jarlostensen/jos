@@ -203,31 +203,27 @@ void k_mem_init(struct multiboot_info *mboot)
             } while(avail > 0x1000 && virt < kVirtMapEnd);
             JOS_KTRACE("mem: 0x%x KB in %d frames mapped from [0x%x, 0x%x] -> [0x%x, 0x%x]\n", _avail_frames<<12, _avail_frames, (uintptr_t)&_k_virt_end, (uintptr_t)&_k_phys_end + 0x400000, virt, phys);
 
-            // move our stack to the top of mapped memory where it can grow downwards towards the heap
+            // safety zone
+            // TODO: remind me why we need this again...?
             virt -= 0x1000;
-            // _k_move_stack(virt);
-
-            // set up allocators
-
-#define CREATE_SMALL_POOL(i, size, pow2)\
-            _small_pools[i] = vmem_fixed_create((void*)_valloc_frame_ptr, size, pow2);\
-            _valloc_frame_ptr += size;\
-            JOS_ASSERT(_valloc_frame_ptr < kVirtMapEnd)
-
-            //zzz: CREATE_SMALL_POOL(0, 512*8, 3);
-            //zzz: CREATE_SMALL_POOL(1, 512*16, 4);
-            //zzz: CREATE_SMALL_POOL(2, 512*32, 5);
-            //zzz: CREATE_SMALL_POOL(3, 512*64, 6);
             
-            // eat the rest of memory for the heap (we'll allocate stacks inside of it when we create tasks)            
+            // create a master heap using the general purpose arena allocator
             size_t arena_size = (virt - (uintptr_t)&_k_virt_end) & ~0xfff;
             _vmem_arena = vmem_arena_create((void*)((uintptr_t)&_k_virt_end), arena_size);
             JOS_KTRACE("mem: %d KB in %d frames allocated for pools, starts at 0x%x, ends at 0x%x\n", arena_size/1024, arena_size>>12, (uintptr_t)&_k_virt_end, (uintptr_t)virt);
             
+            // now allocate some fixed-size pools for small-ish allocations out of the main heap
+#define CREATE_SMALL_POOL(i, size, pow2)\
+            _small_pools[i] = vmem_fixed_create(vmem_arena_alloc(_vmem_arena,size), size, pow2)
+            
+            CREATE_SMALL_POOL(0, 512*8, 3);
+            CREATE_SMALL_POOL(1, 512*16, 4);
+            CREATE_SMALL_POOL(2, 512*32, 5);
+            CREATE_SMALL_POOL(3, 512*64, 6);
+            
             return;
         }
     }        
-
     JOS_KTRACE("error: no available RAM or RAM information\n");
     k_panic();
 }
@@ -247,7 +243,7 @@ void* k_mem_alloc(size_t size)
         size_t pow2 = 3;
         do
         {
-            if(size < (1u<<pow2))
+            if(size <= (1u<<pow2))
             {
                 vmem_fixed_t* pool = _small_pools[pow2-3];
                 ptr = vmem_fixed_alloc(pool,size);
@@ -257,8 +253,6 @@ void* k_mem_alloc(size_t size)
         }
         while(pow2 < 12);
     }
-    if(ptr)
-        memset(ptr,0,size);
     
     return ptr;
 }
@@ -267,13 +261,13 @@ void k_mem_free(void* ptr)
 {
     if(!ptr)
         return;
-    // for(size_t n = 0; n < _num_small_pools; ++n)
-    // {
-    //     if(vmem_fixed_in_pool(_small_pools[n],ptr))
-    //     {
-    //         vmem_fixed_free(_small_pools[n], ptr);
-    //         return;
-    //     }
-    // }    
+    for(size_t n = 0; n < _num_small_pools; ++n)
+    {
+        if(vmem_fixed_in_pool(_small_pools[n],ptr))
+        {
+            vmem_fixed_free(_small_pools[n], ptr);
+            return;
+        }
+    }
     vmem_arena_free(_vmem_arena, ptr);
 }

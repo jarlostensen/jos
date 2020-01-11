@@ -1,14 +1,7 @@
 
 // =========================================================================================
-//TODO: should this go into some sort of std library used across different parts of jOS?
-#ifdef __GNUC__
-#define JOS_PRIVATE_FUNC __attribute__((unused)) static
-#else
-#define JOS_PRIVATE_FUNC static
-#endif
-#define JOS_KTRACE(...)
-// =========================================================================================
 
+#include <kernel/kernel.h>
 #include "../kernel/kernel/arena_allocator.h"
 #include "../kernel/kernel/fixed_allocator.h"
 #include "../kernel/kernel/collections.h"
@@ -36,7 +29,7 @@ void* k_mem_alloc(size_t size)
         size_t pow2 = 3;
         do
         {
-            if(size < (1u<<pow2))
+            if(size <= (1u<<pow2))
             {
                 vmem_fixed_t* pool = _small_pools[pow2-3];
                 ptr = vmem_fixed_alloc(pool,size);
@@ -46,8 +39,6 @@ void* k_mem_alloc(size_t size)
         }
         while(pow2 < 12);
     }
-    if(ptr)
-        memset(ptr,0,size);
     
     return ptr;
 }
@@ -56,15 +47,43 @@ void k_mem_free(void* ptr)
 {
     if(!ptr)
         return;
-    // for(size_t n = 0; n < _num_small_pools; ++n)
-    // {
-    //     if(vmem_fixed_in_pool(_small_pools[n],ptr))
-    //     {
-    //         vmem_fixed_free(_small_pools[n], ptr);
-    //         return;
-    //     }
-    // }    
+     for(size_t n = 0; n < _num_small_pools; ++n)
+     {
+         if(vmem_fixed_in_pool(_small_pools[n],ptr))
+         {
+             vmem_fixed_free(_small_pools[n], ptr);
+             return;
+         }
+     }    
     vmem_arena_free(_vmem_arena, ptr);
+}
+
+void test_mem()
+{
+	// create a master heap using the general purpose arena allocator
+    size_t arena_size = 0x100000;
+	void* memory = malloc(arena_size);
+
+    _vmem_arena = vmem_arena_create(memory, arena_size);
+    JOS_KTRACE("mem: %d KB in %d frames allocated for pools, starts at 0x%x, ends at 0x%x\n", arena_size/1024, arena_size>>12, (uintptr_t)&_k_virt_end, (uintptr_t)virt);
+            
+    // now allocate some fixed-size pools for small-ish allocations out of the main heap
+#define CREATE_SMALL_POOL(i, size, pow2)\
+    _small_pools[i] = vmem_fixed_create(vmem_arena_alloc(_vmem_arena,size), size, pow2)
+    
+    CREATE_SMALL_POOL(0, 512*8, 3);
+    CREATE_SMALL_POOL(1, 512*16, 4);
+    CREATE_SMALL_POOL(2, 512*32, 5);
+    CREATE_SMALL_POOL(3, 512*64, 6);
+
+	for(int n = 8; n < 0x1000; n+=8)
+	{
+		volatile void* ptr = k_mem_alloc(n);
+		memset(ptr,0xff,n);
+		k_mem_free(ptr);
+	}
+
+	free(memory);
 }
 
 // ========================================================================================
@@ -93,5 +112,6 @@ void test_vector()
 int main()
 {
 	test_vector();
+	test_mem();
 	return 0;
 }
