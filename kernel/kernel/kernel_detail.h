@@ -4,7 +4,8 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include "../include/kernel/kernel.h"
+#include <kernel/kernel.h>
+#include <kernel/tty.h>
 
 #ifdef __GNUC__
 #define JOS_PRIVATE_FUNC __attribute__((unused)) static
@@ -14,7 +15,6 @@
 
 
 int k_is_protected_mode();
-void k_panic();
 uint32_t k_eflags();
 
 void _k_enable_interrupts();

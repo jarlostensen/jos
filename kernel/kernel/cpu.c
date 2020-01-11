@@ -205,11 +205,12 @@ void k_cpu_init()
         // supports 64 bit long mode?
         cpu_ok = (_edx & (1<<29)) == (1<<29);
     }
-
+    
     if(!cpu_ok)
     {
-        JOS_KTRACE("error: this CPU does not support the functionality we need (max extended CPUID is 0x%x)\n", _max_extended_cpuid);    
-        k_panic();        
+        JOS_KTRACE("this CPU does not support 64 bit mode\n");    
+        //NOTE: disabled for now since it doesn't work with the free version of VMWare Player
+        // k_panic();        
     }
 
     JOS_KTRACE("_max_basic_cpu = %d, _max_extended_cpu = %x\n", _max_basic_cpuid, _max_extended_cpuid);        

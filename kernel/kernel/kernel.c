@@ -42,11 +42,12 @@ gdt_entry_t _k_gdt16[] = {
 };
 gdt32_descriptor_t _k_gdt16_desc = {.size = sizeof(_k_gdt16), .address = (uint32_t)(_k_gdt16)};
 
-void k_panic()
+__attribute__((__noreturn__)) void k_panic()
 {
     k_tty_set_colour(vga_entry_color(VGA_COLOR_WHITE,VGA_COLOR_LIGHT_BLUE));
     printf("\nKERNEL PANIC!");
     _k_halt_cpu();
+    __builtin_unreachable();
 }
 
 // ======================================================================================

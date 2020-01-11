@@ -1,7 +1,8 @@
-#ifndef _STDLIB_H
-#define _STDLIB_H 1
+#ifndef JOS_STDLIB_H
+#define JOS_STDLIB_H
 
 #include <sys/cdefs.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -10,8 +11,13 @@ extern "C" {
 __attribute__((__noreturn__))
 void abort(void);
 
+void *malloc(size_t size);
+void free(void *ptr);
+void *calloc(size_t nmemb, size_t size);
+void *realloc(void *ptr, size_t size);
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif
+#endif // JOS_STDLIB_H
