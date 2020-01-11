@@ -16,7 +16,14 @@ export BOOTDIR=/boot
 export LIBDIR=$EXEC_PREFIX/lib
 export INCLUDEDIR=$PREFIX/include
 
-export CFLAGS='-Og -g -ggdb -Werror'
+export BUILD_CONFIG=${BUILD_CONFIG-$(./default-build-config.sh)}
+if [ "$BUILD_CONFIG" = "DEBUG" ]; then
+  echo "DEBUG build"
+  export CFLAGS='-Og -g -ggdb -Werror -D_DEBUG'
+else
+  echo "RELEASE build"
+  export CFLAGS='-O2 -Werror'
+fi
 export CPPFLAGS=''
 
 # Configure the cross-compiler to use the desired system root.
@@ -28,3 +35,4 @@ export CC="$CC --sysroot=$SYSROOT"
 if echo "$HOST" | grep -Eq -- '-elf($|-)'; then
   export CC="$CC -isystem=$INCLUDEDIR"
 fi
+
