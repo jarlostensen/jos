@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <kernel/kernel.h>
 
+// https://linux.die.net/man/3/malloc
+
 void *malloc(size_t size)
 {
     if(!size)
@@ -25,8 +27,15 @@ void *calloc(size_t nmemb, size_t size)
 
 void *realloc(void *ptr, size_t size)
 {
-    if(!ptr || !size)
-        return 0;
+    if(!ptr)
+        return malloc(size);
+    
+    if(!size)
+    {
+        free(ptr);
+        return ptr;
+    }
+
     //TODO: built in realloc, using knowledge of size of allocation
     void* new_ptr = k_mem_alloc(size);
     if(new_ptr)

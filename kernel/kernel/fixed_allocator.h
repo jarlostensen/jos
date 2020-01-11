@@ -21,7 +21,7 @@ vmem_fixed_t*     vmem_fixed_create(void* mem, size_t size, size_t allocUnitPow2
     if(allocUnitPow2 < 3)
         return 0;
     vmem_fixed_t* pool = (vmem_fixed_t*)mem;
-    pool->_size_p2 = allocUnitPow2;
+    pool->_size_p2 = (uint8_t)allocUnitPow2;
     size -= sizeof(vmem_fixed_t);
     pool->_count = size / (1<<allocUnitPow2);
     pool->_free = 0;
@@ -65,18 +65,18 @@ bool vmem_fixed_in_pool(vmem_fixed_t* pool, void* ptr)
     return ((uintptr_t)ptr > (uintptr_t)(pool+1)) && ((uintptr_t)ptr < ((uintptr_t)(pool+1) + (1 << pool->_size_p2)));
 }
 
-__attribute__((unused)) void vmem_fixed_clear(vmem_fixed_t* pool)
-{
-    pool->_free = 0;
-    uint32_t* block = (uint32_t*)((uint8_t*)(pool+1));
-    const uint32_t unit_size = 1<<pool->_size_p2;
-    for(size_t n = 1; n < pool->_count; ++n)
-    {
-        *block = (uint32_t)n;
-        block += (unit_size >> 2);
-    }
-    *block = ~0;
-}
+//__attribute__((unused)) void vmem_fixed_clear(vmem_fixed_t* pool)
+//{
+//    pool->_free = 0;
+//    uint32_t* block = (uint32_t*)((uint8_t*)(pool+1));
+//    const uint32_t unit_size = 1<<pool->_size_p2;
+//    for(size_t n = 1; n < pool->_count; ++n)
+//    {
+//        *block = (uint32_t)n;
+//        block += (unit_size >> 2);
+//    }
+//    *block = ~0;
+//}
 
 
 #endif // JOS_FIXED_ALLOCATOR_H
