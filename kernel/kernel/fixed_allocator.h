@@ -15,6 +15,7 @@ typedef struct
     uint8_t     _size_p2;   // power of two unit allocation size
     size_t      _count;
     uint32_t    _free;      // index of first free
+	uintptr_t	_end;		// upper memory bound for pool
 } vmem_fixed_t;
 
 vmem_fixed_t*     vmem_fixed_create(void* mem, size_t size, size_t allocUnitPow2)
@@ -26,6 +27,7 @@ vmem_fixed_t*     vmem_fixed_create(void* mem, size_t size, size_t allocUnitPow2
     size -= sizeof(vmem_fixed_t);
     pool->_count = size / (1<<allocUnitPow2);
     pool->_free = 0;
+	pool->_end = (uintptr_t)((uintptr_t)(pool+1) + pool->_count*(1<<pool->_size_p2));
     uint32_t* block = (uint32_t*)((uint8_t*)(pool+1));
     const uint32_t unit_size = 1<<pool->_size_p2;
     for(size_t n = 1; n < pool->_count; ++n)
@@ -53,7 +55,7 @@ void* vmem_fixed_alloc(vmem_fixed_t* pool, size_t size)
 void vmem_fixed_free(vmem_fixed_t* pool, void* block)
 {
     if(!pool || !block)
-        return;
+        return;	
     const uint32_t unit_size = 1<<pool->_size_p2;    
     uint32_t* fblock = (uint32_t*)block;
     *fblock = pool->_free;
@@ -64,8 +66,7 @@ void vmem_fixed_free(vmem_fixed_t* pool, void* block)
 bool vmem_fixed_in_pool(vmem_fixed_t* pool, void* ptr)
 {
 	const uintptr_t begin = (uintptr_t)(pool+1);
-	const uintptr_t end = (uintptr_t)(begin + pool->_count*(1<<pool->_size_p2));
-    return (uintptr_t)ptr >= begin && (uintptr_t)ptr < end;
+	return (uintptr_t)ptr >= begin && (uintptr_t)ptr < pool->_end;
 }
 
 JOS_PRIVATE_FUNC void vmem_fixed_clear(vmem_fixed_t* pool)

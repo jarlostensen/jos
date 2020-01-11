@@ -67,9 +67,9 @@ static page_frame_alloc_t* _page_frame_alloc_ptr = (page_frame_alloc_t*)&_k_page
 static size_t _avail_frames = 0;
 
 static vmem_arena_t*   _vmem_arena = 0;
-// pools for different sizes of small allocations: 8, 16, 32, 64, 128, 512, 1024, 2048, 4096
-static vmem_fixed_t* _small_pools[9];
-__attribute__((unused)) static size_t _num_small_pools = sizeof(_small_pools)/sizeof(_small_pools[0]);
+// pools for different sizes of small allocations: 8, 16, 32, 64 bytes
+static vmem_fixed_t* _small_pools[4];
+static size_t _num_small_pools = sizeof(_small_pools)/sizeof(_small_pools[0]);
 
 // ====================================================================================
 
