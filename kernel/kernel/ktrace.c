@@ -3,7 +3,7 @@
 #include <string.h>
 #include "kernel_detail.h"
 #include "serial.h"
-#include "clock.h"
+#include <kernel/clock.h>
 
 void _k_trace_buf(const void* data, size_t length)
 {

@@ -2,9 +2,10 @@
 // =========================================================================================
 
 #include <kernel/kernel.h>
-#include "../kernel/kernel/arena_allocator.h"
-#include "../kernel/kernel/fixed_allocator.h"
-#include "../kernel/kernel/collections.h"
+#include <kernel/atomic.h>
+#include <arena_allocator.h>
+#include <fixed_allocator.h>
+#include <collections.h>
 
 // ========================================================================================
 // memory
@@ -101,6 +102,18 @@ void test_vector()
 	}
 
 	vector_destroy(&vec);
+}
+
+// ========================================================================================
+// misc
+
+void test_atomic()
+{
+	atomic_int32_t aint32;
+	atomic_store(&aint32,42);
+	int32_t val = atomic_load(&aint32);
+	if(val!=42)
+		return;
 }
 
 int main()

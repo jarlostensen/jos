@@ -2,8 +2,8 @@
 #include "kernel_detail.h"
 #include "memory.h"
 #include "interrupts.h"
-#include "tasks.h"
-
+#include <kernel/tasks.h>
+#include <kernel/atomic.h>
 #include <stdio.h>
 
 static const size_t kTaskDefaultStackSize = 4096;

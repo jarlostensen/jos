@@ -40,10 +40,14 @@ kernel/ktrace.o \
 kernel/memory.o \
 kernel/tasks.o \
 
+KERNEL_MODULES_OBJS=\
+modules/modules.o\
+
 OBJS=\
 $(ARCHDIR)/crti.o \
 $(ARCHDIR)/crtbegin.o \
 $(KERNEL_OBJS) \
+$(KERNEL_MODULES_OBJS)\
 $(ARCHDIR)/crtend.o \
 $(ARCHDIR)/crtn.o \
 
@@ -52,6 +56,7 @@ $(LDFLAGS) \
 $(ARCHDIR)/crti.o \
 $(ARCHDIR)/crtbegin.o \
 $(KERNEL_OBJS) \
+$(KERNEL_MODULES_OBJS)\
 $(LIBS) \
 $(ARCHDIR)/crtend.o \
 $(ARCHDIR)/crtn.o \

@@ -1,7 +1,7 @@
 #include "kernel_detail.h"
+#include <arena_allocator.h>
+#include <fixed_allocator.h>
 #include "memory.h"
-#include "arena_allocator.h"
-#include "fixed_allocator.h"
 #include "interrupts.h"
 #include "multiboot.h"
 #include <stdio.h>

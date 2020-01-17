@@ -2,8 +2,8 @@
 #include <stdint.h>
 #include "kernel_detail.h"
 #include "interrupts.h"
-#include "clock.h"
-#include "cpu.h"
+#include <kernel/clock.h>
+#include <kernel/cpu.h>
 
 #include <stdio.h>
 

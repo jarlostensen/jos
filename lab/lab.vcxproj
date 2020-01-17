@@ -141,10 +141,11 @@
     <ClCompile Include="lab.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\kernel\include\arena_allocator.h" />
+    <ClInclude Include="..\kernel\include\collections.h" />
+    <ClInclude Include="..\kernel\include\fixed_allocator.h" />
     <ClInclude Include="..\kernel\include\jos.h" />
     <ClInclude Include="..\kernel\include\kernel\kernel.h" />
-    <ClInclude Include="..\kernel\kernel\arena_allocator.h" />
-    <ClInclude Include="..\kernel\kernel\collections.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
