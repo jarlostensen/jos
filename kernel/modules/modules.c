@@ -3,16 +3,19 @@
 #include "../kernel/kernel_detail.h"
 #include <kernel/tasks.h>
 #include <kernel/clock.h>
+#include <multiboot.h>
 #include <stdio.h>
 #include <string.h>
 
 
 void _k_modules_root_task(void* obj)
 {
+    multiboot_info_t* mboot = (multiboot_info_t*)obj;
+
     // ================================================================    
     _k_enable_interrupts();
 
-    printf("\n-------------- root task (0x%x)\n", obj);
+    printf("\n-------------- root task, multiboot info @ 0x%x\n", mboot);
     
     const size_t kSize = 5000;
     void* mem = k_mem_alloc(kSize);

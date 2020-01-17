@@ -30,7 +30,7 @@ typedef struct _task_context
     void*           _obj;
 } task_context_t;
 // initialise task system
-void k_tasks_init(task_func_t root);
+void k_tasks_init(task_func_t root, void* obj);
 // create a task, return the id.
 // this sets up the initial stack and context for the task.
 unsigned int k_task_create(unsigned int pri, task_func_t func, void* obj);

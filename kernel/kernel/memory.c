@@ -3,7 +3,7 @@
 #include <fixed_allocator.h>
 #include "memory.h"
 #include "interrupts.h"
-#include "multiboot.h"
+#include <multiboot.h>
 #include <stdio.h>
 #include <string.h>
 

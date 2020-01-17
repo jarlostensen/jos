@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include "kernel_detail.h"
 #include "dt.h"
-#include "multiboot.h"
+#include <multiboot.h>
 
 #include "../arch/i386/vga.h"
 #include "../arch/i386/hde/hde32.h"
@@ -150,5 +150,5 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
     k_clock_init();
 
     // initialise tasks and hand over to the root task (this call never returns)
-    k_tasks_init(_k_modules_root_task);
+    k_tasks_init(_k_modules_root_task, (void*)mboot);
 }

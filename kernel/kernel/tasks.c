@@ -48,10 +48,10 @@ void _k_task_switch(task_context_t* ctx)
     //NOTE: we never get here, ever...
 }
 
-void k_tasks_init(task_func_t root)
+void k_tasks_init(task_func_t root, void* obj)
 {
     //TESTING:
-    unsigned int id = k_task_create(0, root, (void*)0x12341234);
+    unsigned int id = k_task_create(0, root, obj);
     _k_task_switch(_tasks[id-1]);
 }
 
