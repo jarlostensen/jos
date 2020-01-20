@@ -37,15 +37,16 @@ void _task_handler(task_context_t* ctx)
     }
 }
 
-void _k_task_switch(task_context_t* ctx)
+__attribute__((__noreturn__)) void _k_task_switch(task_context_t* ctx)
 {
     //TODO: if they're not already disabled... _k_disable_interrupts();
     asm volatile("mov %0, %%esp" : : "r" (ctx->_esp));
     asm volatile("mov %0, %%ebp" : : "r" (ctx->_ebp));
-    // https://stackoverflow.com/a/3475763/2030688
+
+    // see https://stackoverflow.com/a/3475763/2030688 for the syntax used here
     asm volatile("jmp %P0": : "i" (_k_isr_switch_point));
 
-    //NOTE: we never get here, ever...
+    __builtin_unreachable();
 }
 
 void k_tasks_init(task_func_t root, void* obj)
