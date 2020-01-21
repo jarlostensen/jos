@@ -11,7 +11,7 @@
 typedef void (*task_func_t)(void* obj);
 // a task is described by a context object which contains information about the entry point, stack,
 // priority, etc.
-typedef struct _task_context 
+struct _task_context 
 {
     unsigned int    _id;
     // priority
@@ -28,7 +28,9 @@ typedef struct _task_context
     task_func_t     _task_func;
     // optional argument for the task function
     void*           _obj;
-} task_context_t;
+} __attribute__((packed));
+typedef struct _task_context task_context_t;
+ 
 // initialise task system
 void k_tasks_init(task_func_t root, void* obj);
 // create a task, return the id.

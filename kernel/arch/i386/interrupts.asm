@@ -2,6 +2,8 @@
 
 section .text
 
+%include "arch/i386/macros.inc"
+
 ; =====================================================================================
 ; IDT
 
@@ -87,27 +89,14 @@ IRQ_HANDLER 19
 ; handler; forwards call to the registered handler via argument 0
 extern _k_isr_handler
 
-global _k_isr_switch_point:function
-
 isr_handler_stub:
     
-    ;  eax, ecx, edx, ebx, original esp, ebp, esi, and edi
-    pushad    
-
-    ; save caller's data segment (could be kernel, could be user)
-    mov ax, ds
-    push eax
+    ISR_HANDLER_PREAMBLE
     
     cld
-    ;TODO: swap to kernel data segments + stack    
     call _k_isr_handler    
     
-    ; we use this for our task switcher...
-_k_isr_switch_point:
-    pop eax
-    popad
-    ; from handler entry point (error code + isr id)
-    add esp,+8    
+    ISR_HANDLER_POSTAMBLE
     iret
 
 

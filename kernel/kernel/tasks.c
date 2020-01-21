@@ -4,16 +4,18 @@
 #include "interrupts.h"
 #include <kernel/tasks.h>
 #include <kernel/atomic.h>
+#include <collections.h>
 #include <stdio.h>
 
 static const size_t kTaskDefaultStackSize = 4096;
 static const size_t kTaskStackAlignment = 16;
-// in interupts.asm
-extern void _k_isr_switch_point(void);
+// in tasks.asm
+extern void _k_task_switch_point(void);
+extern void _k_task_yield(task_context_t* ctx);
 
-//TESTING:
-static task_context_t* _tasks[2];
+static vector_t _tasks;
 static unsigned int _task_id = 0;
+static atomic_int_t _current_task;
 
 static void _push_32(task_context_t* ctx, uint32_t val)
 {
@@ -37,23 +39,33 @@ void _task_handler(task_context_t* ctx)
     }
 }
 
-__attribute__((__noreturn__)) void _k_task_switch(task_context_t* ctx)
+__attribute__((__noreturn__)) void _k_task_start(task_context_t* ctx)
 {
     //TODO: if they're not already disabled... _k_disable_interrupts();
+
+    __atomic_store_n(&_current_task._val, ctx->_id, __ATOMIC_RELAXED);    
     asm volatile("mov %0, %%esp" : : "r" (ctx->_esp));
     asm volatile("mov %0, %%ebp" : : "r" (ctx->_ebp));
 
     // see https://stackoverflow.com/a/3475763/2030688 for the syntax used here
-    asm volatile("jmp %P0": : "i" (_k_isr_switch_point));
+    asm volatile("jmp %P0": : "i" (_k_task_switch_point));
 
     __builtin_unreachable();
 }
 
+void k_task_yield(void)
+{
+    int id = __atomic_load_n(&_current_task._val, __ATOMIC_RELAXED);
+    _k_task_yield((task_context_t*)vector_at(&_tasks, id));
+}
+
 void k_tasks_init(task_func_t root, void* obj)
 {
-    //TESTING:
+    vector_create(&_tasks, 32, sizeof(task_context_t)); 
+    __atomic_store_n(&_current_task._val, 0, __ATOMIC_RELAXED);
     unsigned int id = k_task_create(0, root, obj);
-    _k_task_switch(_tasks[id-1]);
+    //NOTE: for now the task's ID matches the index into _tasks, but if we allow destroying tasks that could change!
+    _k_task_start((task_context_t*)vector_at(&_tasks,id));
 }
 
 unsigned int k_task_create(unsigned int pri, task_func_t func, void* obj)
@@ -65,8 +77,7 @@ unsigned int k_task_create(unsigned int pri, task_func_t func, void* obj)
     ctx->_obj = obj;
     ctx->_task_func = func;
     ctx->_pri = pri;
-    _tasks[_task_id++] = ctx;
-    ctx->_id = _task_id;
+    ctx->_id = _task_id++;
     // aligned stack top    
     ctx->_esp = ctx->_stack_top = (void*)( ((uintptr_t)(ctx+1) + aligned_stack_size) & ~(kTaskStackAlignment-1));
 
@@ -97,6 +108,9 @@ unsigned int k_task_create(unsigned int pri, task_func_t func, void* obj)
     stack->eax = 0;
     ctx->_ebp = ctx->_esp; 
     stack->ebp = stack->esp = (uintptr_t)ctx->_esp;
+
+    //TODO: this requires us to have interrupts disabled
+    vector_push_back(&_tasks, (void*)ctx);
     
     return ctx->_id;
 }
