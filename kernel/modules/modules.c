@@ -7,21 +7,30 @@
 #include <stdio.h>
 #include <string.h>
 
+JOS_PRIVATE_FUNC void _some_task(void* obj)
+{
+    (void)obj;
+    printf("\tthis is some task, yielding\n");
+    k_task_yield();
+    printf("\tthis is some task, ending\n");
+}
 
 void _k_modules_root_task(void* obj)
-{
-    multiboot_info_t* mboot = (multiboot_info_t*)obj;
+{  
+    multiboot_info_t* mboot = (multiboot_info_t*)obj;        
+    printf("\n--------------\nroot task, multiboot info @ 0x%x\n", mboot);
 
-    // ================================================================    
-    _k_enable_interrupts();
-
-    printf("\n-------------- root task, multiboot info @ 0x%x\n", mboot);
+    k_task_create(&(task_create_info_t){ ._pri = 0, ._obj = 0, ._func = _some_task});
     
     const size_t kSize = 5000;
     void* mem = k_mem_alloc(kSize);
     memset(mem, 0xff, kSize);
     printf("test: allocated %d bytes @ 0x%x\n", kSize, (int)mem);
+    k_mem_free(mem);
     
+    // yield to let some task do some work
+    k_task_yield();
+  
     uint32_t ms = k_clock_ms_since_boot();
     printf("waiting for a second starting at %d...", ms);    
     while(ms<=1000)
@@ -42,8 +51,6 @@ void _k_modules_root_task(void* obj)
         k_pause();
     
     printf("now = %lld, delta rdtsc = %lld", k_clock_ms_since_boot(), __rdtsc()-rdtsc_start);
-
-    //k_mem_free(mem);
 
     JOS_KTRACE("halting\n");
     k_panic();

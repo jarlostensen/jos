@@ -13,6 +13,7 @@
 #include <kernel/clock.h>
 #include <kernel/cpu.h>
 #include <kernel/tasks.h>
+#include <kernel/atomic.h>
 
 // =======================================================
 
@@ -42,12 +43,31 @@ gdt_entry_t _k_gdt16[] = {
 };
 gdt32_descriptor_t _k_gdt16_desc = {.size = sizeof(_k_gdt16), .address = (uint32_t)(_k_gdt16)};
 
-__attribute__((__noreturn__)) void k_panic()
+__attribute__((__noreturn__)) void k_panic(void)
 {
     k_tty_set_colour(vga_entry_color(VGA_COLOR_WHITE,VGA_COLOR_LIGHT_BLUE));
     printf("\nKERNEL PANIC!");
     _k_halt_cpu();
     __builtin_unreachable();
+}
+
+static atomic_int_t _interrupts_enabled;
+void _k_disable_interrupts(void)
+{
+    int expected = 1;
+    if ( __atomic_compare_exchange_n(&_interrupts_enabled._val, &expected, 0, true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED) )
+    {
+        asm volatile ("cli");
+    }
+}
+
+void _k_enable_interrupts(void)
+{
+    int expected = 0;
+    if ( __atomic_compare_exchange_n(&_interrupts_enabled._val, &expected, 1, true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED) )
+    {
+        asm volatile ("sti");
+    }
 }
 
 // ======================================================================================
