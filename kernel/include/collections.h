@@ -58,6 +58,11 @@ void vector_destroy(vector_t* vec)
 	memset(vec, 0, sizeof(vector_t));
 }
 
+size_t vector_size(vector_t* vec)
+{
+	return vec->_size;
+}
+
 bool vector_is_empty(vector_t* vec)
 {
 	return !vec->_size;

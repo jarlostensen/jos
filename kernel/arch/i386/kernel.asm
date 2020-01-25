@@ -69,15 +69,15 @@ k_io_wait:
     out 0x80, al
     ret
 
-global _k_enable_interrupts:function
-_k_enable_interrupts:
-    sti 
-    ret
+; global _k_enable_interrupts:function
+; _k_enable_interrupts:
+;     sti 
+;     ret
 
-global _k_disable_interrupts:function
-_k_disable_interrupts:
-    cli
-    ret
+; global _k_disable_interrupts:function
+; _k_disable_interrupts:
+;     cli
+;     ret
 
 ; hard stop, used by kernel_panic
 global _k_halt_cpu:function

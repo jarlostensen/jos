@@ -209,8 +209,6 @@ void k_cpu_init()
     if(!cpu_ok)
     {
         JOS_KTRACE("this CPU does not support 64 bit mode\n");    
-        //NOTE: disabled for now since it doesn't work with the free version of VMWare Player
-        // k_panic();        
     }
 
     JOS_KTRACE("_max_basic_cpu = %d, _max_extended_cpu = %x\n", _max_basic_cpuid, _max_extended_cpuid);        
@@ -220,7 +218,7 @@ void k_cpu_init()
     memcpy(_vendor_string + 8, &_ecx, sizeof(_ecx));
     _vendor_string[12] = 0;
     //ZZZ: something is strange about this here trace; it appears to generate garbage for a couple of subsequent traces...investigate!
-    JOS_KTRACE("%s\n", _vendor_string);
+    JOS_KTRACE("[cpu] vendor string \"%s\"\n", _vendor_string);
 
     if ( k_cpu_feature_present(kCpuFeature_TSC | kCpuFeature_MSR) )
         JOS_KTRACE("TSC & MSR supported\n");
@@ -241,6 +239,17 @@ void k_cpu_init()
     {
         JOS_KTRACE("PSE-36 supported\n");
     }
+    if(_ecx & (1<<31))
+    {
+        // Hypervisor vendor string
+        __get_cpuid(0x40000000, &_eax, &_ebx, &_ecx, &_edx);
+        char hypervisor_id[13] = {0};
+        //ZZZ: why is this garbage on VMWare...?
+        memcpy(hypervisor_id + 0, &_edx, sizeof(_edx));
+        memcpy(hypervisor_id + 4, &_ecx, sizeof(_ecx));
+        memcpy(hypervisor_id + 8, &_ebx, sizeof(_ecx));
+        JOS_KTRACE("[cpu] running in hypervisor mode, vendor id is \"%s\"\n", hypervisor_id);
+    }    
 
     if(k_cpuid_max_extended() >= 0x80000008)
     {
