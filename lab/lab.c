@@ -7,6 +7,8 @@
 #include <fixed_allocator.h>
 #include <collections.h>
 
+#include <assert.h>
+
 // ========================================================================================
 // memory
 
@@ -85,7 +87,7 @@ void test_mem()
 // colletions
 
 
-void test_vector()
+void test_vector(void)
 {
 	vector_t vec;
 	vector_create(&vec, 18, sizeof(uintptr_t));
@@ -97,28 +99,50 @@ void test_vector()
 	uintptr_t* data = (uintptr_t*)vec._data;
 	for (uintptr_t n = 0; n < 43; ++n)
 	{
-		if (data[n] != n)
-			break;
+		assert(data[n] == n);
 	}
 
+	int e = 101;
+	vector_set_at(&vec, 5, &e);
+	memcpy(&e, vector_at(&vec, 5), sizeof(e));
+
 	vector_destroy(&vec);
+}
+
+void test_queue(void)
+{
+	queue_t	queue;
+	queue_create(&queue, 21, sizeof(uintptr_t));
+	assert(queue_is_empty(&queue));
+
+	for(uintptr_t n = 0; n < 21; ++n)
+	{
+		queue_push(&queue, &n);		
+	}
+	assert(queue_is_full(&queue));
+
+	for(uintptr_t n = 0; n < 100; ++n)
+	{
+		queue_pop(&queue);
+		queue_push(&queue,&n);
+		assert(queue_is_full(&queue));
+	}
+
+	queue_destroy(&queue);
 }
 
 // ========================================================================================
 // misc
 
-void test_atomic()
+void test_atomic(void)
 {
-	atomic_int32_t aint32;
-	atomic_store(&aint32,42);
-	int32_t val = atomic_load(&aint32);
-	if(val!=42)
-		return;
+	
 }
 
 int main()
 {
 	test_vector();
 	test_mem();
+	test_queue();
 	return 0;
 }
