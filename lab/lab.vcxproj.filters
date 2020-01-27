@@ -33,6 +33,9 @@
     <ClCompile Include="..\libc\stdio\puts.c">
       <Filter>libc</Filter>
     </ClCompile>
+    <ClCompile Include="..\kernel\kernel\ktrace.c">
+      <Filter>kernel</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\kernel\include\jos.h">

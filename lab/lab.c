@@ -11,6 +11,10 @@
 
 #include "../libc/libc_internal.h"
 
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
 // ========================================================================================
 // memory
 
@@ -140,7 +144,31 @@ extern int _JOS_LIBC_FUNC_NAME(printf)(const char* __restrict format, ...);
 
 void test_stdio(void)
 {
-	_JOS_LIBC_FUNC_NAME(printf)("hello world!\n");
+	char garbage[4] = {0};
+	garbage[0] = 0xf3;
+	garbage[1] = 0x01;
+	garbage[3] = 0xcc;
+	_JOS_LIBC_FUNC_NAME(printf)("hello world %s!\n", garbage);
+}
+
+
+extern void _k_trace(const char* __restrict format,...);
+
+#undef _JOS_KTRACE
+#define _JOS_KTRACE(msg,...) _k_trace(msg,##__VA_ARGS__)
+
+void test_ktrace(void)
+{
+	_JOS_KTRACE("b b boooo?\n");
+	uint8_t _bus_id = 1;
+	uint8_t bus_id[6];
+	sprintf_s(bus_id, 6, "%s", "ISA");
+	_JOS_KTRACE("bus %d, %s\n", _bus_id, bus_id);
+	char garbage[4] = {0};
+	garbage[0] = 0xf3;
+	garbage[1] = 0x01;
+	garbage[3] = 0xcc;
+	_k_trace("hello %s!\n", garbage);
 }
 
 void test_atomic(void)
@@ -154,5 +182,6 @@ int main()
 	test_mem();
 	test_queue();
 	test_stdio();
+	test_ktrace();
 	return 0;
 }

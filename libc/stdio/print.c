@@ -9,13 +9,6 @@
 typedef int (*print_func_t)(void* ctx, const char* data, size_t len);
 typedef int (*putchar_func_t)(void* ctx, int character);
 
-static bool _is_printable(int c)
-{
-    // printavle ASCII characters (including delete)
-    // [32,127]
-    return c > 31 && c < 128;
-}
-
 // the various printf/sprintf etc. functions use an implementation template (_vprint_impl), this structure 
 // effectively provides the different policies used.
 struct _printf_ctx_struct
@@ -157,6 +150,9 @@ int _vprint_impl(_printf_ctx_t* ctx, const char* __restrict format, va_list para
             format += amount;
             written += amount;
         }
+
+		if(!format[0])
+			return written;
 
         const char* format_begun_at = format++;
 
@@ -358,8 +354,6 @@ static int console_print(void* ctx, const char* data, size_t length) {
 
 static int console_putchar(void* ctx, int c) {
     (void)ctx;
-    if(!_is_printable(c))
-        return EOF;
     return putchar(c);
 }
 
@@ -382,8 +376,6 @@ typedef struct buffer_ctx_struct
 
 static int buffer_putchar(void* ctx_, int c)
 {
-    if(!_is_printable(c))
-        return EOF;
     buffer_t* ctx = (buffer_t*)ctx_;    
     *ctx->_wp++ = (char)c;
     return c;
@@ -422,8 +414,6 @@ int _JOS_LIBC_FUNC_NAME(sprintf)(char * __restrict buffer, const char * __restri
 
 static int buffer_n_putchar(void* ctx_, int c)
 {
-    if(!_is_printable(c))
-        return EOF;
     buffer_t* ctx = (buffer_t*)ctx_;
     if(ctx->_wp != ctx->_end)
         *ctx->_wp++ = (char)c;

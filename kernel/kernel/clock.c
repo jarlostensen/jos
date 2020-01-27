@@ -31,13 +31,13 @@
 
 uint32_t _k_clock_freq_frac = 0;
 uint32_t _k_clock_freq_whole = 0;
-//TODO: use atomic
 volatile uint32_t _k_clock_frac = 0;
 volatile uint32_t _k_clock_whole = 0;
 volatile uint64_t _k_ms_elapsed;
+volatile uint64_t _k_ticks_elapsed = 0;
 
 // kernel.asm
-extern void _k_update_clock();
+extern void _k_update_clock(void);
 
 typedef struct {
     
@@ -76,24 +76,28 @@ _JOS_PRIVATE_FUNC void _set_divisor(clock_pit_interval_t* info, uint16_t port)
 static void clock_irq_handler(int i)
 {
     (void)i;
-    _k_update_clock();    
-    
+    ++_k_ticks_elapsed;
+    _k_update_clock();        
     //TODO: check if any outstanding timers are pending etc.
 }
 
-uint64_t k_clock_ms_since_boot()
+uint64_t k_clock_ms_since_boot(void)
 {
     return _k_ms_elapsed;
 }
 
+uint64_t k_ticks_since_boot(void)
+{
+    return _k_ticks_elapsed;
+}
 
-uint64_t k_clock_get_ms_res()
+uint64_t k_clock_get_ms_res(void)
 {
     return (uint64_t)_k_clock_freq_whole<<32 | (uint64_t)_k_clock_freq_frac;
 }
 
 // wait for one 18 Hz period (~55ms)
-static void _wait_one_55ms_interval()
+static void _wait_one_55ms_interval(void)
 {
     k_outb(PIT_COMMAND, PIT_COUNTER_2 | PIT_MODE_ONESHOT);
     // set the timer to be the max interval, i.e. 18.2 Hz
@@ -113,7 +117,7 @@ static void _wait_one_55ms_interval()
 }
 
 //TODO: this needs to be moved into cpu.h/c and made per-core
-uint64_t _k_clock_est_cpu_freq()
+uint64_t _k_clock_est_cpu_freq(void)
 {
     static uint64_t _est_freq = 0;
 
@@ -146,7 +150,7 @@ uint64_t k_clock_ms_to_cycles(uint64_t ms)
     return  (_k_clock_est_cpu_freq() * ms + 500)/1000;
 }
 
-void k_clock_init()
+void k_clock_init(void)
 {
     clock_pit_interval_t info = _make_pit_interval(HZ);
 

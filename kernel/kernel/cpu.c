@@ -122,7 +122,10 @@ static void _smp_init()
                         {
                             // processor
                             const smp_processor_t* smp_proc = (const smp_processor_t*)oem_entry_ptr;
-                            _JOS_KTRACE("processor %s\n", (smp_proc->_flags & 1 ? "boot":"not-boot"));
+                            if(smp_proc->_flags & 1)
+                                _JOS_KTRACE("boot processor\n");
+                            else
+                                _JOS_KTRACE("processor\n");
                             oem_entry_ptr += sizeof(smp_processor_t);
                         }
                         break;
@@ -130,7 +133,19 @@ static void _smp_init()
                         {
                             // bus
                             const smp_bus_t* smp_bus = (const smp_bus_t*)oem_entry_ptr;
-                            _JOS_KTRACE("bus %d, %s\n", smp_bus->_bus_id, smp_bus->_type_string);
+                            unsigned char bus_id[6];
+                            memcpy(bus_id, smp_bus->_type_string, 6);
+                            // clean the bus ID string and 0-terminate it.
+                            for(size_t n = 0; n < 6; ++n)
+                            {
+                                // filter out non-printable characters too
+                                if( bus_id[n] == ' ' || ((int)bus_id[n]<32 || ((int)bus_id[n])>127))
+                                {
+                                    bus_id[n] = 0;
+                                    break;
+                                }
+                            }                            
+                            _JOS_KTRACE("bus %d, %s\n", smp_bus->_bus_id, bus_id);
                             oem_entry_ptr += sizeof(smp_bus_t);
                         }
                         break;

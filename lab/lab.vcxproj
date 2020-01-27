@@ -138,6 +138,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\kernel\kernel\ktrace.c" />
     <ClCompile Include="..\libc\stdio\print.c" />
     <ClCompile Include="..\libc\stdio\putchar.c" />
     <ClCompile Include="..\libc\stdio\puts.c" />
