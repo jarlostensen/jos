@@ -109,7 +109,7 @@ static void _smp_init()
 
                 // the OEM entries follow the configuration header
                 // do a pass over these to count them first
-                //size_t processor_count = 0;
+                size_t processor_count = 0;
                 //size_t bus_count = 0;
                 //size_t io_apic = 0;
                                                 
@@ -123,9 +123,14 @@ static void _smp_init()
                             // processor
                             const smp_processor_t* smp_proc = (const smp_processor_t*)oem_entry_ptr;
                             if(smp_proc->_flags & 1)
-                                _JOS_KTRACE("boot processor\n");
+                            {
+                                _JOS_KTRACE("[cpu] processor %d, signature 0x%x, %s\n", processor_count, smp_proc->_cpu_sig, (smp_proc->_flags & 2) ? "boot":"application");                                
+                            }
                             else
-                                _JOS_KTRACE("processor\n");
+                            {
+                                _JOS_KTRACE("[cpu] processor %d is marked as unusable\n", processor_count);
+                            }
+                            ++processor_count;
                             oem_entry_ptr += sizeof(smp_processor_t);
                         }
                         break;
