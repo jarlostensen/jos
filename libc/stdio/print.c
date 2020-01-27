@@ -2,6 +2,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
+
+#include "../libc_internal.h"
 
 typedef int (*print_func_t)(void* ctx, const char* data, size_t len);
 typedef int (*putchar_func_t)(void* ctx, int character);
@@ -360,7 +363,7 @@ static int console_putchar(void* ctx, int c) {
     return putchar(c);
 }
 
-int printf(const char* restrict format, ...) 
+int _JOS_LIBC_FUNC_NAME(printf)(const char* __restrict format, ...) 
 {
 	va_list parameters;
 	va_start(parameters, format);
@@ -397,7 +400,7 @@ static int buffer_print(void *ctx_, const char* data, size_t length)
 	return (int)length;
 }
 
-int sprintf(char * __restrict buffer, const char * __restrict format, ... )
+int _JOS_LIBC_FUNC_NAME(sprintf)(char * __restrict buffer, const char * __restrict format, ... )
 {
     if(!buffer || !format || !format[0])
     {
@@ -441,7 +444,7 @@ static int buffer_n_print(void *ctx_, const char* data, size_t length)
 	return (int)length;
 }
 
-int snprintf ( char * buffer, size_t n, const char * format, ... )
+int _JOS_LIBC_FUNC_NAME(snprintf) ( char * buffer, size_t n, const char * format, ... )
 {
     if(!buffer || !n || !format || !format[0])
         return 0;
@@ -460,7 +463,7 @@ int snprintf ( char * buffer, size_t n, const char * format, ... )
 	return written;
 }
 
-int vsnprintf(char* buffer, size_t n, const char* format, va_list parameters)
+int _JOS_LIBC_FUNC_NAME(vsnprintf)(char* buffer, size_t n, const char* format, va_list parameters)
 {
     if(!buffer || !n || !format || !format[0])
         return 0;

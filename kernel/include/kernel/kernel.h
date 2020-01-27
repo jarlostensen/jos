@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include "../jos.h"
 
-#ifndef __JOS_LAB
+#ifdef _JOS_KERNEL_BUILD
 
 // ====================================================================================
 // tracing 
@@ -62,7 +62,7 @@ inline uint64_t __rdtsc()
     return ret;
 }
 
-#else
+#else // _JOS_KERNEL_BUILD
 // ====================================================================================
 // Lab build (only defined in the lab visualstudio project)
 

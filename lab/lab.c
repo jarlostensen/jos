@@ -9,6 +9,8 @@
 
 #include <assert.h>
 
+#include "../libc/libc_internal.h"
+
 // ========================================================================================
 // memory
 
@@ -134,6 +136,13 @@ void test_queue(void)
 // ========================================================================================
 // misc
 
+extern int _JOS_LIBC_FUNC_NAME(printf)(const char* __restrict format, ...);
+
+void test_stdio(void)
+{
+	_JOS_LIBC_FUNC_NAME(printf)("hello world!\n");
+}
+
 void test_atomic(void)
 {
 	
@@ -144,5 +153,6 @@ int main()
 	test_vector();
 	test_mem();
 	test_queue();
+	test_stdio();
 	return 0;
 }

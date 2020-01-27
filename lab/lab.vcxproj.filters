@@ -16,17 +16,26 @@
     <Filter Include="kernel">
       <UniqueIdentifier>{f7c66d14-db8e-4545-b857-8d45263d6647}</UniqueIdentifier>
     </Filter>
+    <Filter Include="libc">
+      <UniqueIdentifier>{6f7f3ddc-571b-4b8b-b997-8019658d6c1c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="lab.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\libc\stdio\print.c">
+      <Filter>libc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libc\stdio\putchar.c">
+      <Filter>libc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libc\stdio\puts.c">
+      <Filter>libc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\kernel\include\jos.h">
-      <Filter>kernel</Filter>
-    </ClInclude>
-    <ClInclude Include="..\kernel\include\kernel\kernel.h">
       <Filter>kernel</Filter>
     </ClInclude>
     <ClInclude Include="..\kernel\include\arena_allocator.h">
@@ -37,6 +46,9 @@
     </ClInclude>
     <ClInclude Include="..\kernel\include\fixed_allocator.h">
       <Filter>kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libc\libc_internal.h">
+      <Filter>libc</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

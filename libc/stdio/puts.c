@@ -1,5 +1,6 @@
 #include <stdio.h>
+#include "../libc_internal.h"
 
-int puts(const char* string) {
+int _JOS_LIBC_FUNC_NAME(puts)(const char* string) {
 	return printf("%s\n", string);
 }
