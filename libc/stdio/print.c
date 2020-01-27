@@ -6,6 +6,13 @@
 typedef int (*print_func_t)(void* ctx, const char* data, size_t len);
 typedef int (*putchar_func_t)(void* ctx, int character);
 
+static bool _is_printable(int c)
+{
+    // printavle ASCII characters (including delete)
+    // [32,127]
+    return c > 31 && c < 128;
+}
+
 // the various printf/sprintf etc. functions use an implementation template (_vprint_impl), this structure 
 // effectively provides the different policies used.
 struct _printf_ctx_struct
@@ -197,8 +204,8 @@ int _vprint_impl(_printf_ctx_t* ctx, const char* __restrict format, va_list para
         case 'c':
         {
             char c = (char)va_arg(parameters, int);
-            if (!ctx->_print(ctx->_that, &c, sizeof(c)))
-                return -1;
+            if (ctx->_print(ctx->_that, &c, sizeof(c))==EOF)
+                return EOF;
             written++;
         }
         break;
@@ -208,12 +215,12 @@ int _vprint_impl(_printf_ctx_t* ctx, const char* __restrict format, va_list para
             size_t len = strlen(str);
             if (maxrem < len) {
                 // TODO: Set errno to EOVERFLOW.
-                return -1;
+                return EOF;
             }
             if(len)
             {
-                if (!ctx->_print(ctx->_that, str, len))
-                    return -1;
+                if (ctx->_print(ctx->_that, str, len)==EOF)
+                    return EOF;
                 written += len;
             }
         }
@@ -320,10 +327,10 @@ int _vprint_impl(_printf_ctx_t* ctx, const char* __restrict format, va_list para
             size_t len = strlen(format);
             if (maxrem < len) {
                 // TODO: Set errno to EOVERFLOW.
-                return -1;
+                return EOF;
             }
-            if (!ctx->_print(ctx->_that, format, len))
-                return -1;
+            if (ctx->_print(ctx->_that, format, len)==EOF)
+                return EOF;
             written += len;
             format += len;
         }
@@ -340,15 +347,17 @@ static int console_print(void* ctx, const char* data, size_t length) {
 	const unsigned char* bytes = (const unsigned char*) data;
 	for (size_t i = 0; i < length; i++)
 	{
-		if (putchar(bytes[i]) == EOF)
-			return false;
+         if (putchar(bytes[i]) == EOF)
+            return EOF;
 	}
-	return true;
+	return (int)length;
 }
 
 static int console_putchar(void* ctx, int c) {
     (void)ctx;
-    return putchar(c) != EOF;
+    if(!_is_printable(c))
+        return EOF;
+    return putchar(c);
 }
 
 int printf(const char* restrict format, ...) 
@@ -370,9 +379,11 @@ typedef struct buffer_ctx_struct
 
 static int buffer_putchar(void* ctx_, int c)
 {
-    buffer_t* ctx = (buffer_t*)ctx_;
+    if(!_is_printable(c))
+        return EOF;
+    buffer_t* ctx = (buffer_t*)ctx_;    
     *ctx->_wp++ = (char)c;
-    return true;
+    return c;
 }
 
 static int buffer_print(void *ctx_, const char* data, size_t length) 
@@ -381,9 +392,9 @@ static int buffer_print(void *ctx_, const char* data, size_t length)
 	for (size_t i = 0; i < length; i++)
 	{
 		if (buffer_putchar(ctx_, bytes[i]) == EOF)
-			return false;
+			return EOF;
 	}
-	return true;
+	return (int)length;
 }
 
 int sprintf(char * __restrict buffer, const char * __restrict format, ... )
@@ -408,10 +419,12 @@ int sprintf(char * __restrict buffer, const char * __restrict format, ... )
 
 static int buffer_n_putchar(void* ctx_, int c)
 {
+    if(!_is_printable(c))
+        return EOF;
     buffer_t* ctx = (buffer_t*)ctx_;
     if(ctx->_wp != ctx->_end)
-        *ctx->_wp++ = (char)c;    
-    return true;
+        *ctx->_wp++ = (char)c;
+    return 1;
 }
 
 static int buffer_n_print(void *ctx_, const char* data, size_t length) 
@@ -423,9 +436,9 @@ static int buffer_n_print(void *ctx_, const char* data, size_t length)
 	for (size_t i = 0; i < length; i++)
 	{
 		if (buffer_n_putchar(ctx_, bytes[i]) == EOF)
-			return false;
+			return EOF;
 	}
-	return true;
+	return (int)length;
 }
 
 int snprintf ( char * buffer, size_t n, const char * format, ... )

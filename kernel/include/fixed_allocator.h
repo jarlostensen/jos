@@ -1,5 +1,5 @@
-#ifndef JOS_FIXED_ALLOCATOR_H
-#define JOS_FIXED_ALLOCATOR_H
+#ifndef _JOS_FIXED_ALLOCATOR_H
+#define _JOS_FIXED_ALLOCATOR_H
 
 
 #include <stdint.h>
@@ -69,7 +69,7 @@ bool vmem_fixed_in_pool(vmem_fixed_t* pool, void* ptr)
 	return (uintptr_t)ptr >= begin && (uintptr_t)ptr < pool->_end;
 }
 
-JOS_PRIVATE_FUNC void vmem_fixed_clear(vmem_fixed_t* pool)
+_JOS_PRIVATE_FUNC void vmem_fixed_clear(vmem_fixed_t* pool)
 {
     pool->_free = 0;
     uint32_t* block = (uint32_t*)((uint8_t*)(pool+1));
@@ -83,4 +83,4 @@ JOS_PRIVATE_FUNC void vmem_fixed_clear(vmem_fixed_t* pool)
 }
 
 
-#endif // JOS_FIXED_ALLOCATOR_H
+#endif // _JOS_FIXED_ALLOCATOR_H

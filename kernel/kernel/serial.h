@@ -1,5 +1,5 @@
-#ifndef JOS_SERIAL_H
-#define JOS_SERIAL_H
+#ifndef _JOS_SERIAL_H
+#define _JOS_SERIAL_H
 
 enum serial_port_enum
 {
@@ -21,4 +21,4 @@ void k_serial_flush(short port);
 // write len bytes to port
 void k_serial_write(short port, const char* data, size_t len);
 
-#endif // JOS_SERIAL_H
+#endif // _JOS_SERIAL_H

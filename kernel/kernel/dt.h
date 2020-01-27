@@ -1,6 +1,6 @@
 #pragma once
-#ifndef JOS_KERNEL_DT_H
-#define JOS_KERNEL_DT_H
+#ifndef _JOS_KERNEL_DT_H
+#define _JOS_KERNEL_DT_H
 #include <stdint.h>
 
 // ==============================================================================
@@ -80,4 +80,4 @@ typedef struct gdt16_descriptor_struct gdt16_descriptor_t;
 #define U_CODE_SELECTOR     0x18
 #define U_DATA_SELECTOR     0x20
 
-#endif // JOS_KERNEL_DT_H
+#endif // _JOS_KERNEL_DT_H

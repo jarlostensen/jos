@@ -1,19 +1,19 @@
 
-#ifndef JOS_KERNEL_H
-#define JOS_KERNEL_H
+#ifndef _JOS_KERNEL_H
+#define _JOS_KERNEL_H
 
 #include <stdint.h>
 #include "../jos.h"
 
-#ifndef _JOS_LAB
+#ifndef __JOS_LAB
 
 // ====================================================================================
 // tracing 
 void _k_trace(const char* msg,...);
-#define JOS_KTRACE(msg,...) _k_trace(msg,##__VA_ARGS__)
+#define _JOS_KTRACE(msg,...) _k_trace(msg,##__VA_ARGS__)
 
 void _k_trace_buf(const void* data, size_t length);
-#define JOS_KTRACE_BUF(data,length) _k_trace_buf(data, length)
+#define _JOS_KTRACE_BUF(data,length) _k_trace_buf(data, length)
 
 // ====================================================================================
 // memory
@@ -66,8 +66,8 @@ inline uint64_t __rdtsc()
 // ====================================================================================
 // Lab build (only defined in the lab visualstudio project)
 
-#define JOS_KTRACE(...)
+#define _JOS_KTRACE(...)
 
 #endif
 
-#endif // JOS_KERNEL_H
+#endif // _JOS_KERNEL_H

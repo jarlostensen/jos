@@ -17,6 +17,9 @@ static vector_t _tasks;
 static unsigned int _task_id = 0;
 static atomic_int_t _current_task;
 
+// tasks ready to run, at each priority level
+//TODO: static queue_t _ready_tasks[_JOS_TASK_PRIORITY_HIGHEST];
+
 static void _push_32(task_context_t* ctx, uint32_t val)
 {
     ctx->_esp = (void*)((uintptr_t)ctx->_esp - 4);
@@ -108,8 +111,8 @@ unsigned int k_task_create(task_create_info_t* info)
     // always enable IF
     stack->eflags |= (1<<9);
     
-    stack->cs = JOS_KERNEL_CS_SELECTOR;
-    stack->ds = JOS_KERNEL_DS_SELECTOR;
+    stack->cs = _JOS_KERNEL_CS_SELECTOR;
+    stack->ds = _JOS_KERNEL_DS_SELECTOR;
     stack->error_code = 0;
     stack->handler_id = 0;
     stack->edi = 0;

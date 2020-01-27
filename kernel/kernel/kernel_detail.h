@@ -1,5 +1,5 @@
-#ifndef JOS_KERNEL_DETAIL_H
-#define JOS_KERNEL_DETAIL_H
+#ifndef _JOS_KERNEL_DETAIL_H
+#define _JOS_KERNEL_DETAIL_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -8,9 +8,9 @@
 #include <kernel/tty.h>
 
 #ifdef __GNUC__
-#define JOS_PRIVATE_FUNC __attribute__((unused)) static
+#define _JOS_PRIVATE_FUNC __attribute__((unused)) static
 #else
-#define JOS_PRIVATE_FUNC static
+#define _JOS_PRIVATE_FUNC static
 #endif
 
 
@@ -24,8 +24,8 @@ uint64_t _k_clock_est_cpu_freq();
 // wait by doing a nop-write to port 0x80 (POST)
 void k_io_wait(void);
 
-#define JOS_KERNEL_CS_SELECTOR 0x08
-#define JOS_KERNEL_DS_SELECTOR 0x10
+#define _JOS_KERNEL_CS_SELECTOR 0x08
+#define _JOS_KERNEL_DS_SELECTOR 0x10
 
 typedef enum alignment_enum
 {
@@ -52,4 +52,4 @@ void k_alloc_init();
 //     k_outb(0x70, k_inb(0x70) | 0x80);
 //  }
 
-#endif // JOS_KERNEL_DETAIL_H
+#endif // _JOS_KERNEL_DETAIL_H

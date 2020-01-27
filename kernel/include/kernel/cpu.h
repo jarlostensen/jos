@@ -1,5 +1,5 @@
-#ifndef JOS_CPU_H
-#define JOS_CPU_H
+#ifndef _JOS_CPU_H
+#define _JOS_CPU_H
 
 #include <stdbool.h>
 #include <cpuid.h>
@@ -25,4 +25,4 @@ bool k_cpu_feature_present(cpu_feature_t feature);
 // returns the highest extended function number supported by this CPU
 unsigned int k_cpuid_max_extended();
 
-#endif // JOS_CPU_H
+#endif // _JOS_CPU_H

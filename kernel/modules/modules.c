@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 
-JOS_PRIVATE_FUNC void _some_task(void* obj)
+_JOS_PRIVATE_FUNC void _some_task(void* obj)
 {
     (void)obj;
     printf("\tthis is some task, yielding\n");
@@ -52,6 +52,6 @@ void _k_modules_root_task(void* obj)
     
     printf("now = %lld, delta rdtsc = %lld", k_clock_ms_since_boot(), __rdtsc()-rdtsc_start);
 
-    JOS_KTRACE("halting\n");
+    _JOS_KTRACE("halting\n");
     k_panic();
 }

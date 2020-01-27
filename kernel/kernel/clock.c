@@ -47,7 +47,7 @@ typedef struct {
 
 } clock_pit_interval_t;
 
-JOS_PRIVATE_FUNC clock_pit_interval_t _make_pit_interval(uint32_t hz)
+_JOS_PRIVATE_FUNC clock_pit_interval_t _make_pit_interval(uint32_t hz)
 {
     clock_pit_interval_t    info;
     info._hz = hz;
@@ -64,7 +64,7 @@ JOS_PRIVATE_FUNC clock_pit_interval_t _make_pit_interval(uint32_t hz)
     return info;
 }
 
-JOS_PRIVATE_FUNC void _set_divisor(clock_pit_interval_t* info, uint16_t port)
+_JOS_PRIVATE_FUNC void _set_divisor(clock_pit_interval_t* info, uint16_t port)
 {
     k_outb(port, info->_divisor & 0xff);
     k_outb(port, (info->_divisor>>8) & 0xff);
@@ -155,7 +155,7 @@ void k_clock_init()
     _k_clock_freq_frac = (uint32_t)(info._ms_per_tick_fp32 & 0x00000000ffffffff);
     _k_ms_elapsed = 0;
 
-    JOS_KTRACE("k_init_clock: starting PIT for %d HZ with divider %d, resolution is %d.%d\n", HZ, (int)info._divisor, _k_clock_freq_whole, _k_clock_freq_frac);
+    _JOS_KTRACE("k_init_clock: starting PIT for %d HZ with divider %d, resolution is %d.%d\n", HZ, (int)info._divisor, _k_clock_freq_whole, _k_clock_freq_frac);
 
     // run once to initialise counters
     _k_update_clock();

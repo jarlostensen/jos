@@ -62,7 +62,7 @@ void test_mem()
 	void* memory = malloc(arena_size);
 
 	_vmem_arena = vmem_arena_create(memory, arena_size);
-	JOS_KTRACE("mem: %d KB in %d frames allocated for pools, starts at 0x%x, ends at 0x%x\n", arena_size / 1024, arena_size >> 12, (uintptr_t)&_k_virt_end, (uintptr_t)virt);
+	_JOS_KTRACE("mem: %d KB in %d frames allocated for pools, starts at 0x%x, ends at 0x%x\n", arena_size / 1024, arena_size >> 12, (uintptr_t)&_k_virt_end, (uintptr_t)virt);
 
 	// now allocate some fixed-size pools for small-ish allocations out of the main heap
 #define CREATE_SMALL_POOL(i, size, pow2)\

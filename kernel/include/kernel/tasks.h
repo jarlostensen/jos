@@ -1,5 +1,5 @@
-#ifndef JOS_KERNEL_TASKS_H
-#define JOS_KERNEL_TASKS_H
+#ifndef _JOS_KERNEL_TASKS_H
+#define _JOS_KERNEL_TASKS_H
 
 /*
     Task management and task state.    
@@ -7,6 +7,10 @@
     A task is state and a stack which is used to save and restore the register context and current eip.
     Switching between tasks uses the stack and the iret instruction for simplicity.
 */
+
+#define _JOS_TASK_PRIOTITY_IDLE      1
+#define _JOS_TASK_PRIORITY_NORMAL    2
+#define _JOS_TASK_PRIORITY_HIGHEST   3
 
 typedef void (*task_func_t)(void* obj);
 // a task is described by a context object which contains information about the entry point, stack,
@@ -47,4 +51,4 @@ unsigned int k_task_create(task_create_info_t* info);
 
 void k_task_yield(void);
 
-#endif // JOS_KERNEL_TASKS_H
+#endif // _JOS_KERNEL_TASKS_H

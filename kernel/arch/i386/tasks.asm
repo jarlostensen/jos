@@ -21,7 +21,7 @@ _k_task_yield:
     
     ; save current context 
     pushf
-    push 08h    ; JOS_KERNEL_CS_SELECTOR
+    push 08h    ; _JOS_KERNEL_CS_SELECTOR
     lea edi, [.yield_resume]
     push edi
 

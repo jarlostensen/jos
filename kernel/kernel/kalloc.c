@@ -16,7 +16,7 @@ void k_alloc_init()
     uintptr_t *frame_alloc_ptr = (uintptr_t*)&_k_frame_alloc_ptr;
     //NOTE: virtual address is stored in second entry in kernel_loader.asm
     _free_ptr = frame_alloc_ptr[1];
-    JOS_KTRACE("k_alloc_init. Kernel is %d bytes, heap starts at 0x%x\n", (uintptr_t)&_k_phys_end - (uintptr_t)&_k_phys_start, _free_ptr);
+    _JOS_KTRACE("k_alloc_init. Kernel is %d bytes, heap starts at 0x%x\n", (uintptr_t)&_k_phys_end - (uintptr_t)&_k_phys_start, _free_ptr);
 }
 
 void* k_alloc(size_t bytes, alignment_t alignment)

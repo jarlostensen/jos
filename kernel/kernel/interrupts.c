@@ -175,8 +175,8 @@ isr_handler_func_t k_set_isr_handler(int i, isr_handler_func_t handler)
 
 void k_set_irq_handler(int i, irq_handler_func_t handler)
 {
-    JOS_ASSERT(_irq_handlers[i]==0);
-    JOS_ASSERT(i >= 0 && i < 31);
+    _JOS_ASSERT(_irq_handlers[i]==0);
+    _JOS_ASSERT(i >= 0 && i < 31);
     //DEBUG:printf("k_set_irq_handler 0x%x, 0x%x\n", i, handler);
     _irq_handlers[i] = handler;    
 }
@@ -223,7 +223,7 @@ bool k_irq_enabled(int i)
 
 void _k_init_isrs()
 {
-    JOS_KTRACE("_k_init_isrs\n");
+    _JOS_KTRACE("_k_init_isrs\n");
     memset(_idt, 0, sizeof(_idt));
     memset(_isr_handlers, 0, sizeof(_isr_handlers));
     memset(_irq_handlers, 0, sizeof(_irq_handlers));
@@ -308,8 +308,9 @@ void _k_init_isrs()
 
 void _k_load_isrs()
 {
-    JOS_KTRACE("_k_load_isrs\n");
+    _JOS_KTRACE("_k_load_isrs\n");
     //TODO: some error checking?
     // make it so!
     _k_load_idt(); 
 }
+

@@ -22,14 +22,14 @@ void k_serial_init()
 
 int k_serial_data_ready(short port)
 {
-    JOS_ASSERT(port==kCom1 || port==kCom2);
+    _JOS_ASSERT(port==kCom1 || port==kCom2);
     // line status register, DR bit
     return k_inb(port + 5) & 1;
 }
 
 char k_serial_getch(short port, int wait)
 {
-    JOS_ASSERT(port==kCom1 || port==kCom2);
+    _JOS_ASSERT(port==kCom1 || port==kCom2);
     while(wait && !k_serial_data_ready(port))
     {
         k_pause();
@@ -39,14 +39,14 @@ char k_serial_getch(short port, int wait)
 
 int k_serial_transmit_empty(short port)
 {
-    JOS_ASSERT(port==kCom1 || port==kCom2);    
+    _JOS_ASSERT(port==kCom1 || port==kCom2);    
     // line status register, transmitter empty bit
     return k_inb(port + 5) & 0x20;
 }
 
 void k_serial_putch(short port, char data, int wait)
 {
-    JOS_ASSERT(port==kCom1 || port==kCom2);    
+    _JOS_ASSERT(port==kCom1 || port==kCom2);    
     while(wait && !k_serial_transmit_empty(port))
     {
         k_pause();
@@ -56,7 +56,7 @@ void k_serial_putch(short port, char data, int wait)
 
 void k_serial_flush(short port)
 {
-    JOS_ASSERT(port==kCom1 || port==kCom2);    
+    _JOS_ASSERT(port==kCom1 || port==kCom2);    
     while(!k_serial_transmit_empty(port))
     {
         k_pause();
@@ -65,7 +65,7 @@ void k_serial_flush(short port)
 
 void k_serial_write(short port, const char* data, size_t len)
 {
-    JOS_ASSERT(port==kCom1 || port==kCom2);
+    _JOS_ASSERT(port==kCom1 || port==kCom2);
     while(len)
     {
         k_serial_putch(port, *data++, 1);

@@ -1,5 +1,5 @@
-#ifndef JOS_INTERRUPTS_H
-#define JOS_INTERRUPTS_H
+#ifndef _JOS_INTERRUPTS_H
+#define _JOS_INTERRUPTS_H
 
 #include <stdbool.h>
 

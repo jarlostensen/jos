@@ -1,5 +1,5 @@
-#ifndef JOS_COLLECTIONS_H
-#define JOS_COLLECTIONS_H
+#ifndef _JOS_COLLECTIONS_H
+#define _JOS_COLLECTIONS_H
 
 #include <stdlib.h>
 #include <string.h>
@@ -16,26 +16,26 @@ typedef struct _vector
 	size_t		_element_size;
 } vector_t;
 
-JOS_PRIVATE_FUNC void _vector_decrease_size(vector_t *vector)
+_JOS_PRIVATE_FUNC void _vector_decrease_size(vector_t *vector)
 {
-	JOS_ASSERT(vector->_size);
+	_JOS_ASSERT(vector->_size);
 	--vector->_size;
 }
 
-JOS_PRIVATE_FUNC void _vector_increase_size(vector_t *vector)
+_JOS_PRIVATE_FUNC void _vector_increase_size(vector_t *vector)
 {
-	JOS_ASSERT(vector->_size<vector->_capacity);
+	_JOS_ASSERT(vector->_size<vector->_capacity);
 	++vector->_size;
 }
 
-JOS_PRIVATE_FUNC void _vector_set_at(vector_t* vec, size_t i, void* element)
+_JOS_PRIVATE_FUNC void _vector_set_at(vector_t* vec, size_t i, void* element)
 {
-	JOS_ASSERT(vec && element && vec->_capacity && vec->_element_size && i < vec->_capacity);
+	_JOS_ASSERT(vec && element && vec->_capacity && vec->_element_size && i < vec->_capacity);
 	i *= vec->_element_size;
 	memcpy((char*)vec->_data+i, element, vec->_element_size);
 }
 
-JOS_PRIVATE_FUNC void* _vector_at(vector_t* vec, size_t n)
+_JOS_PRIVATE_FUNC void* _vector_at(vector_t* vec, size_t n)
 {
 	return (void*)((char*)vec->_data + n*vec->_element_size);
 }
@@ -55,7 +55,7 @@ void vector_create(vector_t* vec, size_t capacity, size_t element_size)
 // add element to the end of vector
 void vector_push_back(vector_t* vec, void* element)
 {
-	JOS_ASSERT(vec && element && vec->_capacity && vec->_element_size);
+	_JOS_ASSERT(vec && element && vec->_capacity && vec->_element_size);
 
 	if(vec->_size == vec->_capacity)
 	{
@@ -69,14 +69,14 @@ void vector_push_back(vector_t* vec, void* element)
 
 void vector_set_at(vector_t* vec, size_t i, void* element)
 {
-	JOS_ASSERT(i < vec->_size);
+	_JOS_ASSERT(i < vec->_size);
 	_vector_set_at(vec,i,element);
 }
 
 // get element at index n
 void* vector_at(vector_t* vec, size_t n)
 {
-	JOS_ASSERT(vec && n < vec->_size);
+	_JOS_ASSERT(vec && n < vec->_size);
 	return _vector_at(vec,n);
 }
 
@@ -156,7 +156,7 @@ void queue_pop(queue_t* queue)
 
 void queue_push(queue_t* queue, void * element)
 {
-	JOS_ASSERT(!queue_is_full(queue));
+	_JOS_ASSERT(!queue_is_full(queue));
 	_vector_set_at(queue->_elements, queue->_tail, element);
 	queue->_tail = (queue->_tail+1) % vector_capacity(queue->_elements);
 	_vector_increase_size(queue->_elements);
@@ -175,4 +175,4 @@ void queue_destroy(queue_t* queue)
 	memset(queue,0,sizeof(queue_t));
 }
 
-#endif // JOS_COLLECTIONS_H
+#endif // _JOS_COLLECTIONS_H

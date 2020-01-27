@@ -1,5 +1,5 @@
-#ifndef JOS_STDLIB_H
-#define JOS_STDLIB_H
+#ifndef _JOS_STDLIB_H
+#define _JOS_STDLIB_H
 
 #include <sys/cdefs.h>
 #include <stddef.h>
@@ -20,4 +20,4 @@ void *realloc(void *ptr, size_t size);
 }
 #endif
 
-#endif // JOS_STDLIB_H
+#endif // _JOS_STDLIB_H

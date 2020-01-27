@@ -20,7 +20,7 @@
 gdt_entry_t _k_gdt[] = {
     // null
     { .limit_low = 0, .base_low = 0, .base_middle = 0, .access.byte = 0, .granularity.byte = 0, .base_high = 0 },
-    // kernel code MUST BE JOS_KERNEL_CS_SELECTOR
+    // kernel code MUST BE _JOS_KERNEL_CS_SELECTOR
     { .limit_low = 0xffff, .base_low = 0, .base_middle = 0, .access.byte = 0b10011010, .granularity.fields = { .limit_high = 0xf, .size = 1, .granularity = 1 }, .base_high = 0 },
     // kernel data
     { .limit_low = 0xffff, .base_low = 0, .base_middle = 0, .access.byte = 0b10010010, .granularity.byte = 0b11001111, .base_high = 0 },
@@ -118,7 +118,7 @@ static void isr_6_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
 {
     (void)error_code;
     printf("\tinvalid opcode @ 0x%x:0x%x\n",cs,eip);
-    JOS_BOCHS_DBGBREAK();
+    _JOS_BOCHS_DBGBREAK();
 }
 
 static void irq_1_handler(int irq)
@@ -142,10 +142,10 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
     printf("=============================================\n");
     printf("This is the jOS kernel\n\n");
 
-    JOS_KTRACE("_k_init\n");
+    _JOS_KTRACE("_k_init\n");
     if(magic!=MULTIBOOT_BOOTLOADER_MAGIC)
     {
-        JOS_KTRACE("error: not loaded with multiboot!\n");
+        _JOS_KTRACE("error: not loaded with multiboot!\n");
         k_panic();
     }
             
