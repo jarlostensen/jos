@@ -9,11 +9,13 @@
 
 // ====================================================================================
 // tracing 
-void _k_trace(const char* msg,...);
-#define _JOS_KTRACE(msg,...) _k_trace(msg,##__VA_ARGS__)
+void _k_trace(const char* channel, const char* msg,...);
+#define _JOS_KTRACE_CHANNEL(channel, msg,...) _k_trace(channel, msg,##__VA_ARGS__)
+#define _JOS_KTRACE(msg,...) _k_trace(0, msg,##__VA_ARGS__)
 
-void _k_trace_buf(const void* data, size_t length);
-#define _JOS_KTRACE_BUF(data,length) _k_trace_buf(data, length)
+void _k_trace_buf(const char* channel, const void* data, size_t length);
+#define _JOS_KTRACE_CHANNEL_BUF(channel, data,length) _k_trace_buf(channel, data, length)
+#define _JOS_KTRACE_BUF(data,length) _k_trace_buf(0, data, length)
 
 // ====================================================================================
 // memory

@@ -15,6 +15,8 @@
 #include <kernel/tasks.h>
 #include <kernel/atomic.h>
 
+static const char* kKernChannel = "kernel";
+
 // =======================================================
 
 gdt_entry_t _k_gdt[] = {
@@ -142,10 +144,10 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
     printf("=============================================\n");
     printf("This is the jOS kernel\n\n");
 
-    _JOS_KTRACE("_k_init\n");
+    _JOS_KTRACE(kKernChannel,"_k_init\n");
     if(magic!=MULTIBOOT_BOOTLOADER_MAGIC)
     {
-        _JOS_KTRACE("error: not loaded with multiboot!\n");
+        _JOS_KTRACE(kKernChannel,"error: not loaded with multiboot!\n");
         k_panic();
     }
             

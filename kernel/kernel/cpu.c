@@ -14,6 +14,8 @@ static unsigned int _max_basic_cpuid = 0;
 static unsigned int _max_extended_cpuid = 0;
 static char _vendor_string[32] = {0};
 
+static const char* kCpuChannel = "cpu";
+
 // These things are from the ancient Intel MultiProcessor Specification
 // multi processor floating pointer structure
 // found in memory by scanning (see _smp_init)
@@ -75,7 +77,7 @@ static void _smp_init()
     {        
         const uint32_t* end = (const uint32_t*)(start + length);
         uint32_t* rp = (uint32_t*)start;
-        _JOS_KTRACE("SMP scan 0x%x -> 0x%x\n", rp, end);
+        _JOS_KTRACE_CHANNEL(kCpuChannel,"SMP scan 0x%x -> 0x%x\n", rp, end);
         while(rp<=end)
         {
             if(*rp == kMpTag)
@@ -83,7 +85,7 @@ static void _smp_init()
                 _smp_fp = (smp_fp_t*)rp;
                 if(_smp_fp->_length==1 && (_smp_fp->_specrev == 0x1 || _smp_fp->_specrev == 0x4))
                 {
-                    _JOS_KTRACE("MPF structure @ 0x%x, version 1.%d\n", rp, _smp_fp->_specrev);
+                    _JOS_KTRACE_CHANNEL(kCpuChannel,"MP structure @ 0x%x, version 1.%d\n", rp, _smp_fp->_specrev);
                     return 1;
                 }
                 // this appears to be something we just have to deal with, both VMWare and Bochs contain at least one of these invalid entries.
@@ -104,8 +106,8 @@ static void _smp_init()
             _smp_config = (const smp_config_header_t*)_smp_fp->_phys_address;
             if(_smp_config->_sig==kPmpTag)
             {
-                _JOS_KTRACE("MP configuration table @ 0x%x with %d entries\n", _smp_config,_smp_config->_oem_entry_count);
-                _JOS_KTRACE_BUF(_smp_config->_oem_id, sizeof(_smp_config->_oem_id)); 
+                _JOS_KTRACE_CHANNEL(kCpuChannel,"MP configuration table @ 0x%x with %d entries\n", _smp_config,_smp_config->_oem_entry_count);
+                _JOS_KTRACE_CHANNEL_BUF(kCpuChannel,_smp_config->_oem_id, sizeof(_smp_config->_oem_id)); 
 
                 // the OEM entries follow the configuration header
                 // do a pass over these to count them first
@@ -124,11 +126,11 @@ static void _smp_init()
                             const smp_processor_t* smp_proc = (const smp_processor_t*)oem_entry_ptr;
                             if(smp_proc->_flags & 1)
                             {
-                                _JOS_KTRACE("[cpu] processor %d, signature 0x%x, %s\n", processor_count, smp_proc->_cpu_sig, (smp_proc->_flags & 2) ? "boot":"application");                                
+                                _JOS_KTRACE_CHANNEL(kCpuChannel,"processor %d, signature 0x%x, %s\n", processor_count, smp_proc->_cpu_sig, (smp_proc->_flags & 2) ? "boot":"application");                                
                             }
                             else
                             {
-                                _JOS_KTRACE("[cpu] processor %d is marked as unusable\n", processor_count);
+                                _JOS_KTRACE_CHANNEL(kCpuChannel,"processor %d is marked as unusable\n", processor_count);
                             }
                             ++processor_count;
                             oem_entry_ptr += sizeof(smp_processor_t);
@@ -150,28 +152,28 @@ static void _smp_init()
                                     break;
                                 }
                             }                            
-                            _JOS_KTRACE("bus %d, %s\n", smp_bus->_bus_id, bus_id);
+                            _JOS_KTRACE_CHANNEL(kCpuChannel,"bus %d, %s\n", smp_bus->_bus_id, bus_id);
                             oem_entry_ptr += sizeof(smp_bus_t);
                         }
                         break;
                         case 2:
                         {
                             // I/O apic
-                            //_JOS_KTRACE("I/O apic\n");
+                            //_JOS_KTRACE_CHANNEL(kCpuChannel,"I/O apic\n");
                             oem_entry_ptr += 8;
                         }
                         break;
                         case 3:
                         {
                             // I/O int assignment
-                            //_JOS_KTRACE("I/O int assignment\n");
+                            //_JOS_KTRACE_CHANNEL(kCpuChannel,"I/O int assignment\n");
                             oem_entry_ptr += 8;
                         }
                         break;
                         case 4:
                         {
                             // local int assignment
-                           // _JOS_KTRACE("local int assignment\n");
+                           // _JOS_KTRACE_CHANNEL(kCpuChannel,"local int assignment\n");
                             oem_entry_ptr += 8;
                         }
                         break;
@@ -182,12 +184,12 @@ static void _smp_init()
         }
         else
         {
-            _JOS_KTRACE("TODO: default configurations\n");
+            _JOS_KTRACE_CHANNEL(kCpuChannel,"TODO: default configurations\n");
         }
     }
     else
     {    
-        _JOS_KTRACE("no valid _MP_ tag found, processor appears to be single core\n");    
+        _JOS_KTRACE_CHANNEL(kCpuChannel,"no valid _MP_ tag found, processor appears to be single core\n");    
     }
 }
 
@@ -198,11 +200,11 @@ unsigned int k_cpuid_max_extended()
 
 void k_cpu_init()
 {    
-    _JOS_KTRACE("k_cpu_init\n");
+    _JOS_KTRACE_CHANNEL(kCpuChannel,"k_cpu_init\n");
     unsigned int flags = k_eflags();
     if((flags & CPU_FLAGS_8086) == CPU_FLAGS_8086)
     {
-        _JOS_KTRACE("error: unsupported CPU (8086)\n");
+        _JOS_KTRACE_CHANNEL(kCpuChannel,"error: unsupported CPU (8086)\n");
         printf("CPU is 8086, sorry...can't run.\n");
         k_panic();
     }
@@ -210,7 +212,7 @@ void k_cpu_init()
     _max_basic_cpuid = __get_cpuid_max(0, NULL);
     if(!_max_basic_cpuid)
     {
-        _JOS_KTRACE("error: CPUID not supported\n");
+        _JOS_KTRACE_CHANNEL(kCpuChannel,"error: CPUID not supported\n");
         k_panic();
     }
 
@@ -226,23 +228,23 @@ void k_cpu_init()
     
     if(!cpu_ok)
     {
-        _JOS_KTRACE("this CPU does not support 64 bit mode\n");    
+        _JOS_KTRACE_CHANNEL(kCpuChannel,"this CPU does not support 64 bit mode\n");    
     }
 
-    _JOS_KTRACE("_max_basic_cpu = %d, _max_extended_cpu = %x\n", _max_basic_cpuid, _max_extended_cpuid);        
+    _JOS_KTRACE_CHANNEL(kCpuChannel,"_max_basic_cpu = %d, _max_extended_cpu = %x\n", _max_basic_cpuid, _max_extended_cpuid);        
     __get_cpuid(0, &_eax, &_ebx, &_ecx, &_edx);
     memcpy(_vendor_string + 0, &_ebx, sizeof(_ebx));
     memcpy(_vendor_string + 4, &_edx, sizeof(_edx));
     memcpy(_vendor_string + 8, &_ecx, sizeof(_ecx));
     _vendor_string[12] = 0;
     //ZZZ: something is strange about this here trace; it appears to generate garbage for a couple of subsequent traces...investigate!
-    _JOS_KTRACE("[cpu] vendor string \"%s\"\n", _vendor_string);
+    _JOS_KTRACE_CHANNEL(kCpuChannel,"vendor string \"%s\"\n", _vendor_string);
 
     if ( k_cpu_feature_present(kCpuFeature_TSC | kCpuFeature_MSR) )
-        _JOS_KTRACE("TSC & MSR supported\n");
+        _JOS_KTRACE_CHANNEL(kCpuChannel,"TSC & MSR supported\n");
     if( k_cpu_feature_present(kCpuFeature_APIC))
     {
-        _JOS_KTRACE("APIC present\n");
+        _JOS_KTRACE_CHANNEL(kCpuChannel,"APIC present\n");
         _smp_init();
     }
 
@@ -250,12 +252,12 @@ void k_cpu_init()
     __get_cpuid(0x1, &_eax, &_ebx, &_ecx, &_edx);
     if( (_edx & (1<<6)) == (1<<6))
     {
-        _JOS_KTRACE("PAE supported\n");
+        _JOS_KTRACE_CHANNEL(kCpuChannel,"PAE supported\n");
         pae = 1;
     }
     if( (_edx & (1<<17)) == (1<<17))
     {
-        _JOS_KTRACE("PSE-36 supported\n");
+        _JOS_KTRACE_CHANNEL(kCpuChannel,"PSE-36 supported\n");
     }
     if(_ecx & (1<<31))
     {
@@ -266,22 +268,22 @@ void k_cpu_init()
         memcpy(hypervisor_id + 0, &_edx, sizeof(_edx));
         memcpy(hypervisor_id + 4, &_ecx, sizeof(_ecx));
         memcpy(hypervisor_id + 8, &_ebx, sizeof(_ecx));
-        _JOS_KTRACE("[cpu] running in hypervisor mode, vendor id is \"%s\"\n", hypervisor_id);
+        _JOS_KTRACE_CHANNEL(kCpuChannel,"running in hypervisor mode, vendor id is \"%s\"\n", hypervisor_id);
     }    
 
     if(k_cpuid_max_extended() >= 0x80000008)
     {
         __get_cpuid(0x80000008, &_eax, &_ebx, &_ecx, &_edx);
-        _JOS_KTRACE("cpu physical address size %d bits\n", _eax & 0xff);
-        _JOS_KTRACE("cpu linear address size %d bits\n", (_eax >> 8) & 0xff);
+        _JOS_KTRACE_CHANNEL(kCpuChannel,"physical address size %d bits\n", _eax & 0xff);
+        _JOS_KTRACE_CHANNEL(kCpuChannel,"linear address size %d bits\n", (_eax >> 8) & 0xff);
     }
     else
     {
         if(pae)
-            _JOS_KTRACE("cpu physical address size 36 bits\n");
+            _JOS_KTRACE_CHANNEL(kCpuChannel,"physical address size 36 bits\n");
         else
-            _JOS_KTRACE("cpu physical address size 32 bits\n");
-        _JOS_KTRACE("cpu linear address size 32 bits\n");
+            _JOS_KTRACE_CHANNEL(kCpuChannel,"physical address size 32 bits\n");
+        _JOS_KTRACE_CHANNEL(kCpuChannel,"linear address size 32 bits\n");
     }    
 }
 

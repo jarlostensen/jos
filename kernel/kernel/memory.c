@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 
+static const char* kMemChannel = "mem";
+
 // https://wiki.osdev.org/Paging
 // NOTE: these are really just different views on the same 32(64)-bit data.
 
@@ -165,7 +167,7 @@ void k_mem_init(struct multiboot_info *mboot)
     uintptr_t phys = (uintptr_t)&_k_phys_end + 0x400000;    
     if(mboot->flags & MULTIBOOT_INFO_MEMORY)
     {
-        _JOS_KTRACE("mem: mem_lower = %d KB, mem_upper = %d KB\n", mboot->mem_lower, mboot->mem_upper);
+        _JOS_KTRACE_CHANNEL(kMemChannel,"mem_lower = %d KB, mem_upper = %d KB\n", mboot->mem_lower, mboot->mem_upper);
 
         // available RAM above phys (within a single region)
         size_t avail = 0;
@@ -175,7 +177,7 @@ void k_mem_init(struct multiboot_info *mboot)
         {
             if(mmap->type == MULTIBOOT_MEMORY_AVAILABLE)
             {                
-                _JOS_KTRACE("mem: available 0x%x bytes @ 0x%x\n",
+                _JOS_KTRACE_CHANNEL(kMemChannel,"available 0x%x bytes @ 0x%x\n",
                             (unsigned) mmap->len,
                             (unsigned) mmap->addr);
                 // just look for the region in which our phys address lives
@@ -201,7 +203,7 @@ void k_mem_init(struct multiboot_info *mboot)
                 virt += 0x1000;
                 phys += 0x1000;
             } while(avail > 0x1000 && virt < kVirtMapEnd);
-            _JOS_KTRACE("mem: 0x%x KB in %d frames mapped from [0x%x, 0x%x] -> [0x%x, 0x%x]\n", _avail_frames<<12, _avail_frames, (uintptr_t)&_k_virt_end, (uintptr_t)&_k_phys_end + 0x400000, virt, phys);
+            _JOS_KTRACE_CHANNEL(kMemChannel,"0x%x KB in %d frames mapped from [0x%x, 0x%x] -> [0x%x, 0x%x]\n", _avail_frames<<12, _avail_frames, (uintptr_t)&_k_virt_end, (uintptr_t)&_k_phys_end + 0x400000, virt, phys);
 
             // safety zone
             // TODO: remind me why we need this again...?
@@ -210,7 +212,7 @@ void k_mem_init(struct multiboot_info *mboot)
             // create a master heap using the general purpose arena allocator
             size_t arena_size = (virt - (uintptr_t)&_k_virt_end) & ~0xfff;
             _vmem_arena = vmem_arena_create((void*)((uintptr_t)&_k_virt_end), arena_size);
-            _JOS_KTRACE("mem: %d KB in %d frames allocated for pools, starts at 0x%x, ends at 0x%x\n", arena_size/1024, arena_size>>12, (uintptr_t)&_k_virt_end, (uintptr_t)virt);
+            _JOS_KTRACE_CHANNEL(kMemChannel,"%d KB in %d frames allocated for pools, starts at 0x%x, ends at 0x%x\n", arena_size/1024, arena_size>>12, (uintptr_t)&_k_virt_end, (uintptr_t)virt);
             
             // now allocate some fixed-size pools for small-ish allocations out of the main heap
 #define CREATE_SMALL_POOL(i, size, pow2)\
