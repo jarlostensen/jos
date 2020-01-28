@@ -249,7 +249,7 @@ void k_cpu_init()
     }
 
     int pae = 0;
-    __get_cpuid(0x1, &_eax, &_ebx, &_ecx, &_edx);
+    __cpuid(0x1, _eax, _ebx, _ecx, _edx);
     if( (_edx & (1<<6)) == (1<<6))
     {
         _JOS_KTRACE_CHANNEL(kCpuChannel,"PAE supported\n");
@@ -262,18 +262,17 @@ void k_cpu_init()
     if(_ecx & (1<<31))
     {
         // Hypervisor vendor string
-        __get_cpuid(0x40000000, &_eax, &_ebx, &_ecx, &_edx);
+        unsigned int regs[4];
+        __cpuid(0x40000000, regs[0], regs[1], regs[2], regs[3]);
         char hypervisor_id[13] = {0};
-        //ZZZ: why is this garbage on VMWare...?
-        memcpy(hypervisor_id + 0, &_edx, sizeof(_edx));
-        memcpy(hypervisor_id + 4, &_ecx, sizeof(_ecx));
-        memcpy(hypervisor_id + 8, &_ebx, sizeof(_ecx));
+        memcpy(hypervisor_id, regs + 1, 3 * sizeof(regs[0]));
         _JOS_KTRACE_CHANNEL(kCpuChannel,"running in hypervisor mode, vendor id is \"%s\"\n", hypervisor_id);
+        printf("running in hypervisor mode, vendor id is \"%s\"\n", hypervisor_id);
     }    
 
     if(k_cpuid_max_extended() >= 0x80000008)
     {
-        __get_cpuid(0x80000008, &_eax, &_ebx, &_ecx, &_edx);
+        __cpuid(0x80000008, _eax, _ebx, _ecx, _edx);
         _JOS_KTRACE_CHANNEL(kCpuChannel,"physical address size %d bits\n", _eax & 0xff);
         _JOS_KTRACE_CHANNEL(kCpuChannel,"linear address size %d bits\n", (_eax >> 8) & 0xff);
     }

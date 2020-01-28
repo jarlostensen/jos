@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <intrin.h>
 
 // ========================================================================================
 // memory
@@ -156,10 +157,10 @@ extern void _k_trace(const char* __restrict channel, const char* __restrict form
 
 #undef _JOS_KTRACE
 #define _JOS_KTRACE(channel, msg,...) _k_trace(channel, msg,##__VA_ARGS__)
+static const char* kTestChannel = "test";
 
 void test_ktrace(void)
-{
-	static const char* kTestChannel = "test";
+{	
 	_JOS_KTRACE(kTestChannel,"b b boooo?\n");
 	uint8_t _bus_id = 1;
 	uint8_t bus_id[6];
@@ -177,8 +178,25 @@ void test_atomic(void)
 	
 }
 
+void test_hypervisor(void)
+{
+     // check for hypervisor(s)
+    int regs[4];
+    __cpuid(regs, 1);
+    const auto isVMM = ((regs[2] >> 31) & 1) == 1;
+    if(isVMM)
+    {
+        // we're in a hypervisor, is it one we know about?
+        char hyper_vendor_id[13] = { 0 };
+        __cpuid(regs, 0x40000000);
+        memcpy(hyper_vendor_id, regs + 1, 3 * sizeof(int));
+		_JOS_KTRACE(kTestChannel, "running in hypervisor mode, vendor id is \"%s\"\n", hyper_vendor_id);
+    }
+}
+
 int main()
 {
+	test_hypervisor();
 	test_vector();
 	test_mem();
 	test_queue();
