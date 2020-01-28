@@ -161,6 +161,14 @@ void _k_mem_map(uintptr_t virt, uintptr_t phys)
     //TODO: error? or do we allow re-mapping?
 }
 
+static void _identity_map_range(uintptr_t from, uintptr_t to)
+{
+    for(; from < to; from += 0x1000)
+    {
+        _k_mem_map(from,from);
+    }
+}
+
 void k_mem_init(struct multiboot_info *mboot)
 {
     // end of kernel + 4Megs to skip past area used by page tables
@@ -169,6 +177,13 @@ void k_mem_init(struct multiboot_info *mboot)
     {
         _JOS_KTRACE_CHANNEL(kMemChannel,"mem_lower = %d KB, mem_upper = %d KB\n", mboot->mem_lower, mboot->mem_upper);
 
+        const uintptr_t kHighRAMStart = 0xfebfffff;
+        // discreete APIC
+        _identity_map_range(0xfec00000, 0xfecfffff);
+        // local APIC
+        _identity_map_range(0xfee00000, 0xfeefffff);
+        
+        // look for available main RAM so that we can create a heap
         // available RAM above phys (within a single region)
         size_t avail = 0;
         for (multiboot_memory_map_t* mmap = (multiboot_memory_map_t *) mboot->mmap_addr; 
@@ -202,11 +217,10 @@ void k_mem_init(struct multiboot_info *mboot)
                 avail -= 0x1000;
                 virt += 0x1000;
                 phys += 0x1000;
-            } while(avail > 0x1000 && virt < kVirtMapEnd);
+            } while(avail > 0x1000 && virt < kVirtMapEnd && phys < kHighRAMStart);
             _JOS_KTRACE_CHANNEL(kMemChannel,"0x%x KB in %d frames mapped from [0x%x, 0x%x] -> [0x%x, 0x%x]\n", _avail_frames<<12, _avail_frames, (uintptr_t)&_k_virt_end, (uintptr_t)&_k_phys_end + 0x400000, virt, phys);
 
-            // safety zone
-            // TODO: remind me why we need this again...?
+            // go back under where we got to...
             virt -= 0x1000;
             
             // create a master heap using the general purpose arena allocator
