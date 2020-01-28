@@ -46,10 +46,7 @@
     | header_size | kVmemBlockFree|
     -------------------------------
 */
-enum vmem_block_type_enum
-{
-    kVmemBlockFree = ~((~(size_t)0)>>1),
-};
+#define kVmemBlockFree ~((~(uintptr_t)0)>>1)
 
 typedef struct vmem_block_head_struct
 {
@@ -73,7 +70,7 @@ typedef struct vmem_arena_struct
 
 #define _JOS_VMEM_ARENA_ALLOC_OVERHEAD (sizeof(vmem_block_head_t)+sizeof(vmem_block_tail_t))
 #define _JOS_VMEM_ABS_BLOCK_SIZE(size) ((size) & ~kVmemBlockFree)
-#define _JOS_VMEM_BLOCK_MIN_SIZE 64
+#define _JOS_VMEM_BLOCK_MIN_SIZE _JOS_VMEM_ARENA_ALLOC_OVERHEAD+16
 #define _JOS_VMEM_ARENA_MIN_SIZE (sizeof(vmem_arena_t)+_JOS_VMEM_ARENA_ALLOC_OVERHEAD)
 
 _JOS_PRIVATE_FUNC vmem_block_tail_t* _vmem_tail_from_head(const vmem_block_head_t* head)
