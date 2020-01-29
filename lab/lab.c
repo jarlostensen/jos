@@ -289,16 +289,15 @@ void output_console_flush(output_console_t* con)
 		const int lines_in_buffer = con->_row + (con->_rows - con->_start_row) + 1; //< +1 to convert _row to count
 		int lines_to_flush = min(lines_in_buffer, TTY_HEIGHT);
 		int flush_row = con->_rows - (lines_in_buffer - con->_row - 1); //< as above
-
-		//NOTE: always flush from col 0
+		//NOTE: we always flush from col 0
 		uint16_t cc = flush_row * con->_columns;		
-		const size_t lines = con->_rows - flush_row - 1;
-		con->_driver->_blt(con->_buffer + cc, 0, stride, (size_t)output_width, lines);
-		cc += lines*con->_columns;
+		const size_t lines = con->_rows - flush_row;
+		con->_driver->_blt(con->_buffer + cc, 0, stride, (size_t)output_width, lines);		
 #ifndef _JOS_KERNEL_BUILD
 	printf("\n");
 #endif
-		con->_driver->_blt(con->_buffer + cc, lines, stride, (size_t)output_width, con->_row + 1);
+		// next batch from the top
+		con->_driver->_blt(con->_buffer, lines, stride, (size_t)output_width, con->_row + 1);
 	}
 }
 
