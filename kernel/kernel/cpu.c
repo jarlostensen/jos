@@ -237,7 +237,6 @@ void k_cpu_init()
     memcpy(_vendor_string + 4, &_edx, sizeof(_edx));
     memcpy(_vendor_string + 8, &_ecx, sizeof(_ecx));
     _vendor_string[12] = 0;
-    //ZZZ: something is strange about this here trace; it appears to generate garbage for a couple of subsequent traces...investigate!
     _JOS_KTRACE_CHANNEL(kCpuChannel,"vendor string \"%s\"\n", _vendor_string);
 
     if ( k_cpu_feature_present(kCpuFeature_TSC | kCpuFeature_MSR) )
@@ -266,8 +265,7 @@ void k_cpu_init()
         __cpuid(0x40000000, regs[0], regs[1], regs[2], regs[3]);
         char hypervisor_id[13] = {0};
         memcpy(hypervisor_id, regs + 1, 3 * sizeof(regs[0]));
-        _JOS_KTRACE_CHANNEL(kCpuChannel,"running in hypervisor mode, vendor id is \"%s\"\n", hypervisor_id);
-        printf("running in hypervisor mode, vendor id is \"%s\"\n", hypervisor_id);
+        _JOS_KTRACE_CHANNEL(kCpuChannel,"running in hypervisor, vendor id is \"%s\"\n", hypervisor_id);
     }    
 
     if(k_cpuid_max_extended() >= 0x80000008)
