@@ -198,35 +198,30 @@ void test_hypervisor(void)
 // tty console
 
 #include <kernel/output_console.h>
+output_console_t _stdout;
+console_output_driver_t driver;
 
-void test_console(void)
-{
-	console_output_driver_t driver;
-	driver._blt = _printf_driver_blt;
-
-	output_console_t con;
-	con._columns = 100;
-	con._rows = TTY_HEIGHT-1;
-	con._driver = &driver;
-	output_console_create(&con);
-	
-	for(int n = 0; n < (2*TTY_HEIGHT+1); ++n)
-	{
-		char buffer[200];
-		output_console_print(&con, "line ", 0x20);
-		sprintf_s(buffer, sizeof(buffer), "%d\n", n+1);
-		output_console_print(&con, buffer, 0x20);
-		output_console_flush(&con);
-	}
-	output_console_print(&con, "last line", 0x20);
-	output_console_flush(&con);
-	
- 	output_console_destroy(&con);
-	printf("\n");
+void init_console(void)
+{    
+	driver._blt = _printf_driver_blt;	
+	_stdout._columns = 100;
+	_stdout._rows = _TTY_HEIGHT-1;
+	_stdout._driver = &driver;
+	output_console_create(&_stdout);	
 }
 
-int main()
+void test_console(void)
+{	
+	for(int n = 0; n < (2*_TTY_HEIGHT+1); ++n)
+	{
+		_JOS_LIBC_FUNC_NAME(printf)("line %d\n", n);
+	}
+	_JOS_LIBC_FUNC_NAME(printf)("last line");	
+}
+
+int main(void)
 {
+	init_console();
 	test_console();
 
 	test_hypervisor();
@@ -235,5 +230,7 @@ int main()
 	test_queue();
 	test_stdio();
 	test_ktrace();
+	
+ 	output_console_destroy(&_stdout);
 	return 0;
 }

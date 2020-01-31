@@ -3,9 +3,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
-
-#include "../libc_internal.h"
 #include <stdlib.h>
+
+#include <kernel/output_console.h>
+#include "../libc_internal.h"
 
 typedef int (*print_func_t)(void* ctx, const char* data, size_t len);
 typedef int (*putchar_func_t)(void* ctx, int character);
@@ -337,7 +338,7 @@ int _vprint_impl(ctx_t* ctx, const char* __restrict format, va_list parameters)
     }
 
     if (ctx->_flush)
-        ctx->_flush(ctx);
+        ctx->_flush(ctx->_that);
 
     return written;
 }
@@ -354,12 +355,16 @@ typedef struct _printf_ctx
 static void console_flush(void* ctx)
 {
     printf_ctx_t* printf_ctx = (printf_ctx_t*)ctx;
-    //ZZZ: this will be a console flush
-    for (size_t i = 0; i < printf_ctx->_wp; i++)
+    if(printf_ctx->_wp)
     {
-        putchar(printf_ctx->_line[i]);
+        //TODO: attribute
+        output_console_print(&_stdout, printf_ctx->_line, 0x20);
+        output_console_flush(&_stdout);
+#ifndef _JOS_KERNEL_BUILD
+        printf("\n");
+#endif
+        printf_ctx->_wp = 0;
     }
-    printf_ctx->_wp = 0;
 }
 
 static int console_print(void* ctx, const char* data, size_t length_) {
@@ -370,11 +375,11 @@ static int console_print(void* ctx, const char* data, size_t length_) {
     {
         //NOTE: this can never be 0, we always flush when the buffer is full
         size_t sub_length = min(_PRINTF_CTX_LINE_LENGTH - printf_ctx->_wp, length);
-        memcpy(printf_ctx->_line, data, sub_length);
+        memcpy(printf_ctx->_line + printf_ctx->_wp, data, sub_length);
         length -= sub_length;
         printf_ctx->_wp += sub_length;
         if (printf_ctx->_wp == _PRINTF_CTX_LINE_LENGTH)
-        {
+        {            
             console_flush(ctx);
         }
     }
@@ -385,7 +390,7 @@ static int console_print(void* ctx, const char* data, size_t length_) {
 static int console_putchar(void* ctx, int c) {
     printf_ctx_t* printf_ctx = (printf_ctx_t*)ctx;
     //NOTE: this can never be 0, we always flush when the buffer is full
-    memcpy(printf_ctx->_line, &c, sizeof(c));
+    memcpy(printf_ctx->_line + printf_ctx->_wp, &c, sizeof(c));
     ++printf_ctx->_wp;
     if (printf_ctx->_wp == _PRINTF_CTX_LINE_LENGTH)
     {
