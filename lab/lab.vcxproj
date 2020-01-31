@@ -149,6 +149,7 @@
     <ClInclude Include="..\kernel\include\collections.h" />
     <ClInclude Include="..\kernel\include\fixed_allocator.h" />
     <ClInclude Include="..\kernel\include\jos.h" />
+    <ClInclude Include="..\kernel\include\kernel\output_console.h" />
     <ClInclude Include="..\libc\libc_internal.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
