@@ -19,6 +19,12 @@
     <Filter Include="libc">
       <UniqueIdentifier>{6f7f3ddc-571b-4b8b-b997-8019658d6c1c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="kernel\arch">
+      <UniqueIdentifier>{ab7d9b07-4611-4b77-9b58-5dd7a290ad13}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="kernel\arch\i386">
+      <UniqueIdentifier>{23f9652f-56a6-4453-9889-9d0d438f9622}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="lab.c">
@@ -52,6 +58,9 @@
     </ClInclude>
     <ClInclude Include="..\libc\libc_internal.h">
       <Filter>libc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\kernel\include\kernel\output_console.h">
+      <Filter>kernel</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
