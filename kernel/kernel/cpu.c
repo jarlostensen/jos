@@ -9,6 +9,10 @@
 //NOTE: if these are clear in REAL mode it's a 286 but...that's not something we check for yet
 #define CPU_FLAGS_8086      (0x7<<12)
 
+// Intel IA dev guide, 10.4
+#define IA32_APIC_BASE_MSR      0x1b
+
+
 // max supported basic and extended
 static unsigned int _max_basic_cpuid = 0;
 static unsigned int _max_extended_cpuid = 0;
@@ -249,6 +253,14 @@ void k_cpu_init()
 
     int pae = 0;
     __cpuid(0x1, _eax, _ebx, _ecx, _edx);
+    if( (_edx & (1<<9)) == (1<<9))
+    {
+        _JOS_KTRACE_CHANNEL(kCpuChannel,"Local APIC present\n");
+
+        uint32_t apic_lo, apic_hi;
+        rdmsr(IA32_APIC_BASE_MSR, &apic_lo, &apic_hi);
+        _JOS_KTRACE_CHANNEL(kCpuChannel,"APIC base phys address is 0x%lx\n",  (uint64_t)apic_lo | ((uint64_t)apic_hi << 32));
+    }
     if( (_edx & (1<<6)) == (1<<6))
     {
         _JOS_KTRACE_CHANNEL(kCpuChannel,"PAE supported\n");

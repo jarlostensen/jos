@@ -25,4 +25,15 @@ bool k_cpu_feature_present(cpu_feature_t feature);
 // returns the highest extended function number supported by this CPU
 unsigned int k_cpuid_max_extended();
 
+// read MSR
+inline void rdmsr(uint32_t msr, uint32_t* lo, uint32_t* hi)
+{
+    asm volatile("rdmsr" : "=a"(*lo), "=d"(*hi) : "c"(msr));
+}
+// write MSR
+inline void wrmsr(uint32_t msr, uint32_t lo, uint32_t hi)
+{
+   asm volatile("wrmsr" : : "a"(lo), "d"(hi), "c"(msr));
+}
+
 #endif // _JOS_CPU_H
