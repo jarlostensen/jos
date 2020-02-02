@@ -369,7 +369,6 @@ static void console_flush(void* ctx)
 
 static int console_print(void* ctx, const char* data, size_t length_) {
     printf_ctx_t* printf_ctx = (printf_ctx_t*)ctx;
-    const unsigned char* bytes = (const unsigned char*)data;
     size_t length = length_;
     while (length)
     {
