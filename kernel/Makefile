@@ -39,6 +39,7 @@ kernel/serial.o \
 kernel/ktrace.o \
 kernel/memory.o \
 kernel/tasks.o \
+kernel/output_console.o \
 
 KERNEL_MODULES_OBJS=\
 modules/modules.o\

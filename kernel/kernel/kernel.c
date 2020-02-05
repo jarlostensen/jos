@@ -5,7 +5,6 @@
 #include "dt.h"
 #include <multiboot.h>
 
-#include "../arch/i386/vga.h"
 #include "../arch/i386/hde/hde32.h"
 #include "interrupts.h"
 #include "memory.h"
@@ -14,6 +13,7 @@
 #include <kernel/cpu.h>
 #include <kernel/tasks.h>
 #include <kernel/atomic.h>
+#include <kernel/output_console.h>
 
 static const char* kKernChannel = "kernel";
 
@@ -47,7 +47,9 @@ gdt32_descriptor_t _k_gdt16_desc = {.size = sizeof(_k_gdt16), .address = (uint32
 
 __attribute__((__noreturn__)) void k_panic(void)
 {
-    k_tty_set_colour(vga_entry_color(VGA_COLOR_WHITE,VGA_COLOR_LIGHT_BLUE));
+    // white on blue
+    output_console_set_bg(&_stdout, 9);
+    output_console_set_fg(&_stdout, 15);
     printf("\nKERNEL PANIC!");
     _k_halt_cpu();
     __builtin_unreachable();
@@ -119,8 +121,8 @@ static void isr_5_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
 static void isr_6_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
 {
     (void)error_code;
-    printf("\tinvalid opcode @ 0x%x:0x%x\n",cs,eip);
     _JOS_BOCHS_DBGBREAK();
+    printf("\tinvalid opcode @ 0x%x:0x%x\n",cs,eip);    
 }
 
 static void irq_1_handler(int irq)
@@ -136,10 +138,10 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
     // ================================================================
     // this section expects INTERRUPTS TO BE DISABLED
     // ================================================================
-
-    k_tty_initialize();
-    k_tty_disable_cursor();    
+    
     k_serial_init();
+    k_mem_init(mboot);
+    output_console_init();    
    
     printf("=============================================\n");
     printf("This is the jOS kernel\n\n");
@@ -150,10 +152,8 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
         _JOS_KTRACE(kKernChannel,"error: not loaded with multiboot!\n");
         k_panic();
     }
-            
-    k_mem_init(mboot);
-    k_cpu_init();            
-
+    
+    k_cpu_init();
     _k_init_isrs();    
     k_set_irq_handler(1, irq_1_handler);
 

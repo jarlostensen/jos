@@ -4,9 +4,25 @@
 
 #ifdef __GNUC__
 #define _JOS_PRIVATE_FUNC __attribute__((unused)) static
+
+void _k_trace(const char* channel, const char* msg,...);
+#define _JOS_KTRACE_CHANNEL(channel, msg,...) _k_trace(channel, msg,##__VA_ARGS__)
+#define _JOS_KTRACE(msg,...)  _k_trace(0, msg,##__VA_ARGS__)
+
+void _k_trace_buf(const char* channel, const void* data, size_t length);
+#define _JOS_KTRACE_CHANNEL_BUF(channel, data,length) _k_trace_buf(channel, data, length)
+#define _JOS_KTRACE_BUF(data,length) _k_trace_buf(0, data, length)
+
 #define _JOS_BOCHS_DBGBREAK() asm volatile ("xchg %bx,%bx")
+
 #ifdef _DEBUG
-#define _JOS_ASSERT(cond) if(!(cond)) {asm volatile ("xchg %bx,%bx");}
+#define _JOS_ASSERT_COND(cond) #cond
+#define _JOS_ASSERT(cond)\
+if(!(cond))\
+{\
+    _k_trace(0, "assert %s, %s:%d\n", _JOS_ASSERT_COND(cond), __FILE__,__LINE__);\
+    asm volatile ("xchg %bx,%bx");\
+}
 #else
 #define _JOS_ASSERT(cond)
 #endif
@@ -27,5 +43,8 @@
 
 #endif
 
+#ifndef min
+#define min(a,b) ((a)<(b) ? (a) : (b))
+#endif
 
 #endif // _JOS_H

@@ -31,26 +31,33 @@ void _k_modules_root_task(void* obj)
     // yield to let some task do some work
     k_task_yield();
   
-    uint32_t ms = k_clock_ms_since_boot();
-    printf("waiting for a second starting at %d...", ms);    
-    while(ms<=1000)
+    if( k_clock_ok() )
     {
-        ms = k_clock_ms_since_boot();
-        k_pause();
-    }    
-    printf("ok, we're at %dms\n", ms);
-    
-    uint64_t cpu_freq = _k_clock_est_cpu_freq();
-    printf("CPU clocked to %lld MHz\n", cpu_freq/1000000);
+        uint32_t ms = k_clock_ms_since_boot();
+        printf("waiting for a second starting at %d...", ms);    
+        while(ms<=1000)
+        {
+            ms = k_clock_ms_since_boot();
+            k_pause();
+        }    
+        printf("ok, we're at %dms\n", ms);
+        
+        uint64_t cpu_freq = _k_clock_est_cpu_freq();
+        printf("CPU clocked to %lld MHz\n", cpu_freq/1000000);
 
-    const uint64_t ms_to_wait = 2;
-    printf("rdtsc timer wait for %lld @ %lld...", ms_to_wait, k_clock_ms_since_boot(), __rdtsc());
-    uint64_t rdtsc_start = __rdtsc();
-    uint64_t rdtsc_end = __rdtsc() + (cpu_freq * ms_to_wait + 500)/1000;
-    while(__rdtsc() <= rdtsc_end)
-        k_pause();
-    
-    printf("now = %lld, delta rdtsc = %lld", k_clock_ms_since_boot(), __rdtsc()-rdtsc_start);
+        const uint64_t ms_to_wait = 2;
+        printf("rdtsc timer wait for %lld @ %lld...", ms_to_wait, k_clock_ms_since_boot(), __rdtsc());
+        uint64_t rdtsc_start = __rdtsc();
+        uint64_t rdtsc_end = __rdtsc() + (cpu_freq * ms_to_wait + 500)/1000;
+        while(__rdtsc() <= rdtsc_end)
+            k_pause();
+        
+        printf("now = %lld, delta rdtsc = %lld", k_clock_ms_since_boot(), __rdtsc()-rdtsc_start);
+    }
+    else
+    {
+        printf("nothing to do, no usable clock\n");
+    }
 
     _JOS_KTRACE("halting\n");
     k_panic();

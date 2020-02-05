@@ -2,6 +2,7 @@
 #define _JOS_CLOCK_H
 
 void k_clock_init(void);
+bool k_clock_ok(void);
 uint64_t k_clock_ms_since_boot(void);
 uint64_t k_ticks_since_boot(void);
 

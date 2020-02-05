@@ -29,12 +29,15 @@
 #define PIT_RL_DATA             0x30    // LSB, then MSB
 #define PIT_MODE_ONESHOT        0x01
 
+static bool _clock_ok = false;
 uint32_t _k_clock_freq_frac = 0;
 uint32_t _k_clock_freq_whole = 0;
 volatile uint32_t _k_clock_frac = 0;
 volatile uint32_t _k_clock_whole = 0;
 volatile uint64_t _k_ms_elapsed;
 volatile uint64_t _k_ticks_elapsed = 0;
+
+const char* kClockChannel = "clock";
 
 // kernel.asm
 extern void _k_update_clock(void);
@@ -152,24 +155,46 @@ uint64_t k_clock_ms_to_cycles(uint64_t ms)
 
 void k_clock_init(void)
 {
-    clock_pit_interval_t info = _make_pit_interval(HZ);
+    uint64_t cpu_hz = _k_clock_est_cpu_freq();
+    _JOS_KTRACE_CHANNEL(kClockChannel, "CPU clocked at %d MHz\n", cpu_hz);
+    if( cpu_hz <= HZ )
+    {
+        _JOS_KTRACE_CHANNEL(kClockChannel, "*** Clock speed too low for our kernel, no timers will be running!\n");
+    }
+    else
+    {
+        clock_pit_interval_t info = _make_pit_interval(HZ);
 
-    // whole and fractional part for our interrupt handler
-    _k_clock_freq_whole = (uint32_t)(info._ms_per_tick_fp32 >> 32);
-    _k_clock_freq_frac = (uint32_t)(info._ms_per_tick_fp32 & 0x00000000ffffffff);
-    _k_ms_elapsed = 0;
+        // whole and fractional part for our interrupt handler
+        _k_clock_freq_whole = (uint32_t)(info._ms_per_tick_fp32 >> 32);
+        _k_clock_freq_frac = (uint32_t)(info._ms_per_tick_fp32 & 0x00000000ffffffff);
+        _k_ms_elapsed = 0;
 
-    _JOS_KTRACE("k_init_clock: starting PIT for %d HZ with divider %d, resolution is %d.%d\n", HZ, (int)info._divisor, _k_clock_freq_whole, _k_clock_freq_frac);
+        if(!info._divisor)
+        {
+            _JOS_KTRACE_CHANNEL(kClockChannel, "non-sensical clock frequencies, is this running in an emulator?\n");
+            return;
+        }
 
-    // run once to initialise counters
-    _k_update_clock();
-    
-    // initialise PIT
-    k_outb(PIT_COMMAND, PIT_COUNTER_0 | PIT_MODE_SQUAREWAVE | PIT_RL_DATA);
-    // set frequency         
-    _set_divisor(&info, PIT_DATA_0);
-    
-    // start the clock IRQ
-    k_set_irq_handler(0,clock_irq_handler);
-    k_enable_irq(0);
+        _JOS_KTRACE_CHANNEL(kClockChannel, "starting PIT for %d HZ with divider %d, resolution is %d.%d\n", HZ, (int)info._divisor, _k_clock_freq_whole, _k_clock_freq_frac);
+
+        // run once to initialise counters
+        _k_update_clock();
+        
+        // initialise PIT
+        k_outb(PIT_COMMAND, PIT_COUNTER_0 | PIT_MODE_SQUAREWAVE | PIT_RL_DATA);
+        // set frequency         
+        _set_divisor(&info, PIT_DATA_0);
+        
+        // start the clock IRQ
+        k_set_irq_handler(0,clock_irq_handler);
+        k_enable_irq(0);
+
+        _clock_ok = true;
+    }
+}
+
+bool k_clock_ok(void)
+{
+    return _clock_ok;
 }

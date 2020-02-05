@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <kernel/kernel.h>
-#include <kernel/tty.h>
+
 
 #ifdef __GNUC__
 #define _JOS_PRIVATE_FUNC __attribute__((unused)) static

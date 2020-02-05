@@ -1,5 +1,5 @@
-#ifndef ARCH_I386_VGA_H
-#define ARCH_I386_VGA_H
+#ifndef _JOS_ARCH_I386_VGA_H
+#define ARCH__JOS_I386_VGA_H
 
 #include <stdint.h>
 
@@ -30,4 +30,9 @@ static inline uint16_t vga_entry(unsigned char uc, uint8_t color) {
 	return (uint16_t) uc | (uint16_t) color << 8;
 }
 
-#endif
+void vga_init(void);
+void vga_blt(void* src, size_t start_line, size_t stride, size_t width, size_t lines);
+void vga_clear(void);	
+void vga_clear_to_val(uint16_t val);	
+
+#endif // _JOS_

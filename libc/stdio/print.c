@@ -357,8 +357,7 @@ static void console_flush(void* ctx)
     printf_ctx_t* printf_ctx = (printf_ctx_t*)ctx;
     if(printf_ctx->_wp)
     {
-        //TODO: attribute
-        output_console_print(&_stdout, printf_ctx->_line, 0x20);
+        output_console_print(&_stdout, printf_ctx->_line);
         output_console_flush(&_stdout);
 #ifndef _JOS_KERNEL_BUILD
         printf("\n");
@@ -411,6 +410,10 @@ int _JOS_LIBC_FUNC_NAME(printf)(const char* __restrict format, ...)
         format, parameters);
     va_end(parameters);
     return count;
+}
+
+int _JOS_LIBC_FUNC_NAME(puts)(const char* string) {
+	return _JOS_LIBC_FUNC_NAME(printf)("%s\n", string);
 }
 
 // ================================================================================================================

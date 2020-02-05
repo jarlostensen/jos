@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 int printf(const char* __restrict, ...);
-int putchar(int);
+//zzz: slow and horrible, not used in our code int putchar(int);
 int puts(const char*);
 int sprintf (char * __restrict, const char * __restrict, ... );
 int snprintf ( char * __restrict, size_t n, const char * __restrict, ... );
