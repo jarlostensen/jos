@@ -197,24 +197,21 @@ void test_hypervisor(void)
 // ========================================================================================
 // tty console
 
+extern void vga_init(void);
+extern void vga_draw(void);
 #include <kernel/output_console.h>
-output_console_t _stdout;
-console_output_driver_t driver;
 
 void init_console(void)
 {    
-	driver._blt = _printf_driver_blt;	
-	_stdout._columns = 100;
-	_stdout._rows = _TTY_HEIGHT-1;
-	_stdout._driver = &driver;
-	output_console_create(&_stdout);	
+	output_console_init();
 }
 
 void test_console(void)
 {	
-	for(int n = 0; n < (2*_TTY_HEIGHT+1); ++n)
+	for(int n = 0; n < 50; ++n)
 	{
 		_JOS_LIBC_FUNC_NAME(printf)("line %d\n", n);
+		vga_draw();
 	}
 	_JOS_LIBC_FUNC_NAME(printf)("last line");	
 }

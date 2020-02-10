@@ -1,37 +1,19 @@
 #include <kernel/output_console.h>
-#ifdef _JOS_KERNEL_BUILD
 #include "../arch/i386/vga.h"
-#else
-_JOS_PRIVATE_FUNC void _printf_driver_blt(void * src_, size_t start_line, size_t stride, size_t width, size_t lines)
-{
-	stride >>= 1;
-	const int output_width = min(_TTY_WIDTH, width);
-	lines = min(lines, _TTY_HEIGHT - start_line);
-	uint16_t* src = (uint16_t*)src_;
-	while(lines--)
-	{
-		for(int c = 0; c < output_width; ++c)
-		{
-			printf("%c", (char)src[c]);
-		}
-		if ( lines )
-			printf("\n");
-		src += stride;
-	}
-}
-#endif
 
 output_console_t _stdout;
 static console_output_driver_t _vga_driver;
+static int _vga_width, _vga_height;
 
 void output_console_init(void)
 {
     vga_init();
     _vga_driver._blt = vga_blt;	
     _vga_driver._clear = vga_clear_to_val;
-
-	_stdout._columns = 100;    
-	_stdout._rows = _TTY_HEIGHT*2;
+	vga_display_size(&_vga_width,&_vga_height);
+	
+	_stdout._columns = 100;
+	_stdout._rows = 60;
 	_stdout._driver = &_vga_driver;
     _stdout._attr = vga_entry_color(VGA_COLOR_LIGHT_GREY,VGA_COLOR_BLACK);
 	output_console_create(&_stdout);
@@ -53,15 +35,14 @@ void output_console_flush(output_console_t* con)
 {
 	_JOS_ASSERT(con);
 	_JOS_ASSERT(con->_buffer);
-	const int output_width = min(con->_columns, _TTY_WIDTH);
-	const size_t stride = (size_t)con->_columns*2;
+	const size_t input_stride = (size_t)con->_columns*2;
 
 	if(con->_start_row < con->_row)
 	{
-		int lines_to_flush = min(con->_row+1, _TTY_HEIGHT);
-		const int flush_start_row = con->_row - min(_TTY_HEIGHT-1, con->_row-con->_start_row);
+		int lines_to_flush = min(con->_row+1, _vga_height);
+		const int flush_start_row = con->_row - min(_vga_height-1, con->_row-con->_start_row);
 		//NOTE: always flush from col 0
-		con->_driver->_blt(con->_buffer + flush_start_row * con->_columns, 0, stride, (size_t)output_width, lines_to_flush);
+		con->_driver->_blt(con->_buffer + flush_start_row * con->_columns, 0, input_stride, (size_t)con->_columns, lines_to_flush);
 	}
 	else
 	{
@@ -70,16 +51,13 @@ void output_console_flush(output_console_t* con)
 		//NOTE: we always flush from col 0
 		uint16_t cc = flush_row * con->_columns;		
 		const size_t lines = con->_rows - flush_row;
-		con->_driver->_blt(con->_buffer + cc, 0, stride, (size_t)output_width, lines);		
-#ifndef _JOS_KERNEL_BUILD
-	printf("\n");
-#endif
+		con->_driver->_blt(con->_buffer + cc, 0, input_stride, (size_t)con->_columns, lines);		
 		// next batch from the top
-		con->_driver->_blt(con->_buffer, lines, stride, (size_t)output_width, con->_row + 1);
+		con->_driver->_blt(con->_buffer, lines, input_stride, (size_t)con->_columns, con->_row + 1);
 	}
 }
 
-inline void output_console_print(output_console_t* con, const char* line)
+void output_console_print(output_console_t* con, const char* line)
 {
 	_JOS_ASSERT(con);
 	_JOS_ASSERT(con->_buffer);

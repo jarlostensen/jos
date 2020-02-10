@@ -34,5 +34,6 @@ void vga_init(void);
 void vga_blt(void* src, size_t start_line, size_t stride, size_t width, size_t lines);
 void vga_clear(void);	
 void vga_clear_to_val(uint16_t val);	
+void vga_display_size(int* width, int *height);
 
 #endif // _JOS_

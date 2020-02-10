@@ -9,10 +9,6 @@
 #include <string.h>
 #include "../jos.h"
 
-//ZZZ: should these be defined by the driver...or the console?
-#define _TTY_HEIGHT 8
-#define _TTY_WIDTH 25
-
 typedef struct _console_output_driver
 {
 	// assumes stride in bytes

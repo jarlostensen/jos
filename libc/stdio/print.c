@@ -359,9 +359,6 @@ static void console_flush(void* ctx)
     {
         output_console_print(&_stdout, printf_ctx->_line);
         output_console_flush(&_stdout);
-#ifndef _JOS_KERNEL_BUILD
-        printf("\n");
-#endif
         printf_ctx->_wp = 0;
     }
 }

@@ -33,13 +33,13 @@
     <ClCompile Include="..\libc\stdio\print.c">
       <Filter>libc</Filter>
     </ClCompile>
-    <ClCompile Include="..\libc\stdio\putchar.c">
-      <Filter>libc</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libc\stdio\puts.c">
-      <Filter>libc</Filter>
-    </ClCompile>
     <ClCompile Include="..\kernel\kernel\ktrace.c">
+      <Filter>kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\kernel\arch\i386\vga.c">
+      <Filter>kernel\arch\i386</Filter>
+    </ClCompile>
+    <ClCompile Include="..\kernel\kernel\output_console.c">
       <Filter>kernel</Filter>
     </ClCompile>
   </ItemGroup>
@@ -61,6 +61,9 @@
     </ClInclude>
     <ClInclude Include="..\kernel\include\kernel\output_console.h">
       <Filter>kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="..\kernel\arch\i386\vga.h">
+      <Filter>kernel\arch\i386</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

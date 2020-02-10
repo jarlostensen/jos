@@ -138,13 +138,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\kernel\arch\i386\vga.c" />
     <ClCompile Include="..\kernel\kernel\ktrace.c" />
+    <ClCompile Include="..\kernel\kernel\output_console.c" />
     <ClCompile Include="..\libc\stdio\print.c" />
-    <ClCompile Include="..\libc\stdio\putchar.c" />
-    <ClCompile Include="..\libc\stdio\puts.c" />
     <ClCompile Include="lab.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\kernel\arch\i386\vga.h" />
     <ClInclude Include="..\kernel\include\arena_allocator.h" />
     <ClInclude Include="..\kernel\include\collections.h" />
     <ClInclude Include="..\kernel\include\fixed_allocator.h" />
