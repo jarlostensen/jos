@@ -28,7 +28,6 @@ void vga_display_size(int* width, int *height)
 void vga_blt(void* src_, size_t start_line, size_t stride, size_t width, size_t lines)
 {
     _JOS_ASSERT(start_line < VGA_HEIGHT); 
-    _JOS_ASSERT(width < VGA_WIDTH);
     _JOS_ASSERT((stride & 1)==0);
     stride >>= 1;
 	const int output_width = 2*min(VGA_WIDTH, width);
@@ -39,7 +38,7 @@ void vga_blt(void* src_, size_t start_line, size_t stride, size_t width, size_t 
 	{
         memcpy(dst, src, output_width);
 		src += stride;
-        dst += VGA_PITCH;
+        dst += VGA_WIDTH;
 	}
 }
 
