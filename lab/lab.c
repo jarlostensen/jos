@@ -210,7 +210,7 @@ void test_console(void)
 {	
 	for(int n = 0; n < 50; ++n)
 	{
-		_JOS_LIBC_FUNC_NAME(printf)("line %d\n", n);
+		_JOS_LIBC_FUNC_NAME(printf)("line\t%d\n", n);
 		vga_draw();
 	}
 	_JOS_LIBC_FUNC_NAME(printf)("last line");	
