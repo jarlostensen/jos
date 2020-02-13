@@ -3,7 +3,7 @@
 #define _JOS_H
 
 #ifdef __GNUC__
-#define _JOS_PRIVATE_FUNC __attribute__((unused)) static
+#define _JOS_INLINE_FUNC __attribute__((unused)) static
 
 void _k_trace(const char* channel, const char* msg,...);
 #define _JOS_KTRACE_CHANNEL(channel, msg,...) _k_trace(channel, msg,##__VA_ARGS__)
@@ -32,7 +32,7 @@ if(!(cond))\
 #else
 //TODO: check if this is actually VS, but we're assuming it because we're in control...
 
-#define _JOS_PRIVATE_FUNC static
+#define _JOS_INLINE_FUNC static
 #define _JOS_BOCHS_DBGBREAK() __debugbreak()
 #ifdef _DEBUG
 #define _JOS_ASSERT(cond) if(!(cond)) { __debugbreak(); }

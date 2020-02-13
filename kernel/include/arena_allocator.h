@@ -73,32 +73,32 @@ typedef struct vmem_arena_struct
 #define _JOS_VMEM_BLOCK_MIN_SIZE _JOS_VMEM_ARENA_ALLOC_OVERHEAD+16
 #define _JOS_VMEM_ARENA_MIN_SIZE (sizeof(vmem_arena_t)+_JOS_VMEM_ARENA_ALLOC_OVERHEAD)
 
-_JOS_PRIVATE_FUNC vmem_block_tail_t* _vmem_tail_from_head(const vmem_block_head_t* head)
+_JOS_INLINE_FUNC vmem_block_tail_t* _vmem_tail_from_head(const vmem_block_head_t* head)
 {	
 	return (vmem_block_tail_t*)((char*)(head+1) + (_JOS_VMEM_ABS_BLOCK_SIZE(head->_size)) - (_JOS_VMEM_ARENA_ALLOC_OVERHEAD));
 }
 
-_JOS_PRIVATE_FUNC vmem_block_head_t* _vmem_head_from_tail(const vmem_block_tail_t* tail)
+_JOS_INLINE_FUNC vmem_block_head_t* _vmem_head_from_tail(const vmem_block_tail_t* tail)
 {	
 	return (vmem_block_head_t*)((char*)(tail) - (_JOS_VMEM_ABS_BLOCK_SIZE(tail->_size) + sizeof(vmem_block_head_t)));
 }
 
-_JOS_PRIVATE_FUNC bool _vmem_block_is_free(size_t blockSize)
+_JOS_INLINE_FUNC bool _vmem_block_is_free(size_t blockSize)
 {
 	return ((blockSize & kVmemBlockFree)==kVmemBlockFree);
 }
 
-_JOS_PRIVATE_FUNC size_t _vmem_tail_size(const vmem_block_head_t* head)
+_JOS_INLINE_FUNC size_t _vmem_tail_size(const vmem_block_head_t* head)
 {
 	return ((head->_size - (_JOS_VMEM_ARENA_ALLOC_OVERHEAD)));
 }
 
-_JOS_PRIVATE_FUNC size_t _vmem_tail_free_size(const vmem_block_head_t* head)
+_JOS_INLINE_FUNC size_t _vmem_tail_free_size(const vmem_block_head_t* head)
 {
 	return ((head->_size - (_JOS_VMEM_ARENA_ALLOC_OVERHEAD)) | kVmemBlockFree);
 }
 
-_JOS_PRIVATE_FUNC void _vmem_arena_block_insert_as_free(vmem_arena_t* arena, vmem_block_head_t* new_block)
+_JOS_INLINE_FUNC void _vmem_arena_block_insert_as_free(vmem_arena_t* arena, vmem_block_head_t* new_block)
 {
     if(!arena || !new_block || arena->_free_head==new_block)
         return;
@@ -150,7 +150,7 @@ _JOS_PRIVATE_FUNC void _vmem_arena_block_insert_as_free(vmem_arena_t* arena, vme
 	}
 }
 
-_JOS_PRIVATE_FUNC void _vmem_arena_disconnect(vmem_arena_t* arena, vmem_block_head_t* block)
+_JOS_INLINE_FUNC void _vmem_arena_disconnect(vmem_arena_t* arena, vmem_block_head_t* block)
 {
 	if(!arena || !block || (block->_size & kVmemBlockFree)!=kVmemBlockFree)
 		return;

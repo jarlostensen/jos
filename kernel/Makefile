@@ -40,6 +40,7 @@ kernel/ktrace.o \
 kernel/memory.o \
 kernel/tasks.o \
 kernel/output_console.o \
+kernel/keyboard.o \
 
 KERNEL_MODULES_OBJS=\
 modules/modules.o\

@@ -125,13 +125,10 @@ static void isr_6_handler(uint32_t error_code, uint16_t cs, uint32_t eip)
     printf("\tinvalid opcode @ 0x%x:0x%x\n",cs,eip);    
 }
 
-static void irq_1_handler(int irq)
-{
-    printf("\tIRQ %d handler, keyboard\n", irq);
-}
-
 // in modules/modules.c
 extern void _k_modules_root_task(void* obj);
+// in keyboard.c
+extern void k_keyboard_init(void);
 
 void _k_main(uint32_t magic, multiboot_info_t *mboot)
 {    
@@ -154,9 +151,8 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
     }
     
     k_cpu_init();
-    _k_init_isrs();    
-    k_set_irq_handler(1, irq_1_handler);
 
+    _k_init_isrs();        
     k_set_isr_handler(0, isr_0_handler);
     k_set_isr_handler(1, isr_1_handler);
     k_set_isr_handler(2, isr_2_handler);
@@ -165,11 +161,10 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
     k_set_isr_handler(5, isr_5_handler);
     k_set_isr_handler(6, isr_6_handler);
     k_set_isr_handler(14, _k_mem_page_fault_handler);
-    
     _k_load_isrs();
 
-    k_enable_irq(1);
     k_clock_init();
+    k_keyboard_init();
 
     // initialise tasks and hand over to the root task (this call never returns)
     k_tasks_init(_k_modules_root_task, (void*)mboot);

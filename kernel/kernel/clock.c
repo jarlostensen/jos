@@ -50,7 +50,7 @@ typedef struct {
 
 } clock_pit_interval_t;
 
-_JOS_PRIVATE_FUNC clock_pit_interval_t _make_pit_interval(uint32_t hz)
+_JOS_INLINE_FUNC clock_pit_interval_t _make_pit_interval(uint32_t hz)
 {
     clock_pit_interval_t    info;
     info._hz = hz;
@@ -67,7 +67,7 @@ _JOS_PRIVATE_FUNC clock_pit_interval_t _make_pit_interval(uint32_t hz)
     return info;
 }
 
-_JOS_PRIVATE_FUNC void _set_divisor(clock_pit_interval_t* info, uint16_t port)
+_JOS_INLINE_FUNC void _set_divisor(clock_pit_interval_t* info, uint16_t port)
 {
     k_outb(port, info->_divisor & 0xff);
     k_outb(port, (info->_divisor>>8) & 0xff);

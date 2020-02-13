@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 
-_JOS_PRIVATE_FUNC void _some_task(void* obj)
+_JOS_INLINE_FUNC void _some_task(void* obj)
 {
     (void)obj;
     printf("\tthis is some task, yielding\n");

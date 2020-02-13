@@ -69,7 +69,7 @@ bool vmem_fixed_in_pool(vmem_fixed_t* pool, void* ptr)
 	return (uintptr_t)ptr >= begin && (uintptr_t)ptr < pool->_end;
 }
 
-_JOS_PRIVATE_FUNC void vmem_fixed_clear(vmem_fixed_t* pool)
+_JOS_INLINE_FUNC void vmem_fixed_clear(vmem_fixed_t* pool)
 {
     pool->_free = 0;
     uint32_t* block = (uint32_t*)((uint8_t*)(pool+1));

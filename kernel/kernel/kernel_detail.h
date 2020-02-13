@@ -8,9 +8,9 @@
 
 
 #ifdef __GNUC__
-#define _JOS_PRIVATE_FUNC __attribute__((unused)) static
+#define _JOS_INLINE_FUNC __attribute__((unused)) static
 #else
-#define _JOS_PRIVATE_FUNC static
+#define _JOS_INLINE_FUNC static
 #endif
 
 
