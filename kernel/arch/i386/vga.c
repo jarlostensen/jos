@@ -15,6 +15,7 @@ static const size_t VGA_PITCH = 80*2;
 static uint16_t* const VGA_MEMORY = (uint16_t*) 0xb8000;
 #else
 #include <stdio.h>
+#include <stdlib.h>
 // allocated separately
 static uint16_t* VGA_MEMORY = 0;
 #endif

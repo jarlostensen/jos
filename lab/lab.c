@@ -194,6 +194,33 @@ void test_hypervisor(void)
     }
 }
 
+static const size_t kPri_Lowest = 0;
+static const size_t kPri_Medium = 1;
+static const size_t kPri_Highest = 2;
+
+// tasks ready to run, in order of priority
+static queue_t _ready[kPri_Highest+1];
+// tasks waiting for something, in order of priority
+static queue_t _waiting[kPri_Highest+1];
+
+typedef struct task_entry
+{
+	//TODO:
+} task_entry_t;
+
+void test_init_scheduler()
+{
+    for(size_t n = 0; n < kPri_Highest+1; ++n)
+    {
+        queue_create(_ready + n, 8, sizeof(task_entry_t));
+    }
+}
+
+void test_scheduler()
+{
+    
+}
+
 // ========================================================================================
 // tty console
 
