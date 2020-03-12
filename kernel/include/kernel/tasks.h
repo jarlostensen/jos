@@ -32,11 +32,11 @@ struct _task_context
     task_func_t     _task_func;
     // optional argument for the task function
     void*           _obj;
-} __attribute__((packed));
+} _JOS_PACKED;
 typedef struct _task_context task_context_t;
 
 // initialise task system and switch to the root task
-__attribute__((__noreturn__)) void k_tasks_init(task_func_t root, void* obj);
+_JOS_NORETURN void k_tasks_init(task_func_t root, void* obj);
 
 typedef struct _task_create_info
 {
@@ -47,7 +47,7 @@ typedef struct _task_create_info
 
 // create a task, return the id.
 // this sets up the initial stack and context for the task.
-unsigned int k_task_create(task_create_info_t* info);
+task_context_t* k_task_create(task_create_info_t* info);
 
 void k_task_yield(void);
 

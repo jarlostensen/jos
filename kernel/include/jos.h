@@ -15,6 +15,10 @@ void _k_trace_buf(const char* channel, const void* data, size_t length);
 
 #define _JOS_BOCHS_DBGBREAK() asm volatile ("xchg %bx,%bx")
 
+#define _JOS_BOCHS_DBGBREAK_TRACE()\
+_k_trace(0, "break at %s:%d\n", __FILE__,__LINE__);\
+asm volatile ("xchg %bx,%bx")
+
 #ifdef _DEBUG
 #define _JOS_ASSERT_COND(cond) #cond
 #define _JOS_ASSERT(cond)\
@@ -29,18 +33,27 @@ if(!(cond))\
 
 #define _JOS_ALIGN(type,name,alignment) type name __attribute__ ((aligned (alignment)))
 
+#define _JOS_PACKED __attribute__((packed))
+#define _JOS_NORETURN __attribute__((__noreturn__))
+
 #else
 //TODO: check if this is actually VS, but we're assuming it because we're in control...
 
 #define _JOS_INLINE_FUNC static
 #define _JOS_BOCHS_DBGBREAK() __debugbreak()
+
+#define _JOS_BOCHS_DBGBREAK_TRACE() __debugbreak()
+
+#define _JOS_PACKED
+#define _JOS_NORETURN
+
+
 #ifdef _DEBUG
 #define _JOS_ASSERT(cond) if(!(cond)) { __debugbreak(); }
 #else
 #define _JOS_ASSERT(cond)
 #endif
 #define _JOS_ALIGN(type,name,alignment) __declspec(align(alignment)) type name
-
 #endif
 
 #ifndef min

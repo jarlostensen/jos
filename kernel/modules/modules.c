@@ -20,7 +20,7 @@ void _k_modules_root_task(void* obj)
     multiboot_info_t* mboot = (multiboot_info_t*)obj;        
     printf("\n--------------\nroot task, multiboot info @ 0x%x\n", mboot);
 
-    k_task_create(&(task_create_info_t){ ._pri = 0, ._obj = 0, ._func = _some_task});
+    //k_task_create(&(task_create_info_t){ ._pri = 0, ._obj = 0, ._func = _some_task});
     
     const size_t kSize = 5000;
     void* mem = k_mem_alloc(kSize);
@@ -59,6 +59,5 @@ void _k_modules_root_task(void* obj)
         printf("nothing to do, no usable clock\n");
     }
 
-    _JOS_KTRACE("halting\n");
-    k_panic();
+	// fall through, we should pick up the idle task now
 }

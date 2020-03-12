@@ -41,6 +41,7 @@ kernel/memory.o \
 kernel/tasks.o \
 kernel/output_console.o \
 kernel/keyboard.o \
+kernel/cpu_core.o \
 
 KERNEL_MODULES_OBJS=\
 modules/modules.o\

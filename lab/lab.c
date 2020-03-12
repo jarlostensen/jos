@@ -125,6 +125,8 @@ void test_queue(void)
 	for(uintptr_t n = 0; n < 21; ++n)
 	{
 		queue_push(&queue, &n);		
+		uintptr_t f = *((uintptr_t*)queue_front(&queue));
+		assert(f==0);
 	}
 	assert(queue_is_full(&queue));
 
@@ -136,6 +138,24 @@ void test_queue(void)
 	}
 
 	queue_destroy(&queue);
+
+	queue_t queues[4];
+	queue_create(queues+0,8,sizeof(int));
+	queue_create(queues+1,8,sizeof(int));
+	queue_create(queues+2,8,sizeof(int));
+	queue_create(queues+3,8,sizeof(int));
+	queue_t* q1 = queues + 1;
+	queue_t* q2 = queues + 2;
+
+	int n = 42;
+	queue_push(q1, &n);
+	n = *((int*)queue_front(q1));
+
+	queue_create(&queue, 8, sizeof(char*));
+	const char* str1 = "foo";
+	queue_push(&queue, &str1);
+	const char* f = *((char**)queue_front(&queue));
+	assert(f==str1);
 }
 
 // ========================================================================================
@@ -194,33 +214,6 @@ void test_hypervisor(void)
     }
 }
 
-static const size_t kPri_Lowest = 0;
-static const size_t kPri_Medium = 1;
-static const size_t kPri_Highest = 2;
-
-// tasks ready to run, in order of priority
-static queue_t _ready[kPri_Highest+1];
-// tasks waiting for something, in order of priority
-static queue_t _waiting[kPri_Highest+1];
-
-typedef struct task_entry
-{
-	//TODO:
-} task_entry_t;
-
-void test_init_scheduler()
-{
-    for(size_t n = 0; n < kPri_Highest+1; ++n)
-    {
-        queue_create(_ready + n, 8, sizeof(task_entry_t));
-    }
-}
-
-void test_scheduler()
-{
-    
-}
-
 // ========================================================================================
 // tty console
 
@@ -246,7 +239,7 @@ void test_console(void)
 int main(void)
 {
 	init_console();
-	test_console();
+	//test_console();
 
 	test_hypervisor();
 	test_vector();

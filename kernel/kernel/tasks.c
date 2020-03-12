@@ -5,6 +5,7 @@
 #include <kernel/tasks.h>
 #include <kernel/atomic.h>
 #include <collections.h>
+#include "cpu_core.h"
 #include <stdio.h>
 
 static const size_t kTaskDefaultStackSize = 4096;
@@ -13,13 +14,12 @@ static const size_t kTaskStackAlignment = 16;
 extern void _k_task_switch_point(void);
 extern void _k_task_yield(task_context_t* curr_ctx, task_context_t* new_ctx);
 
-static vector_t _tasks;
-static unsigned int _task_id = 0;
-static atomic_int_t _current_task;
+//TESTING
+static cpu_core_context_t	*_core0;
+// unique, always increasing
+static size_t _task_id = 0;
 
-// tasks ready to run, at each priority level
-//TODO: static queue_t _ready_tasks[_JOS_TASK_PRIORITY_HIGHEST];
-
+// helper to build task context stack
 static void _push_32(task_context_t* ctx, uint32_t val)
 {
     ctx->_esp = (void*)((uintptr_t)ctx->_esp - 4);
@@ -29,57 +29,75 @@ static void _push_32(task_context_t* ctx, uint32_t val)
 void _task_handler(task_context_t* ctx)
 {
     //TODO: task start preamble
-    //DEBUG:printf("_task_handler 0x%x\n", ctx);
+    //printf("_task_handler: ctx = 0x%x, ctx->_obj = 0x%x\n", ctx, ctx->_obj);
 
     // execute task body
     ctx->_task_func(ctx->_obj);
 
     //TODO: remove this task from task list
-    // wait for this task never to be called again
-    printf("DEAD TASK %d\n", ctx->_id);
+    // wait for this task never to be called again    
     while(true)
     {
         k_pause();
     }
 }
 
-void _schedule_next_task(void)
+static void _schedule_next_task(cpu_core_context_t* core_ctx)
 {
-    unsigned int id = __atomic_load_n(&_current_task._val, __ATOMIC_RELAXED);
-    // simple round-robin    
-    id = (id + 1) % vector_size(&_tasks);
-    __atomic_store_n(&_current_task._val, id, __ATOMIC_RELAXED);    
+	task_context_t* curr_ctx = core_ctx->_running;
+	if( _k_cpu_core_context_schedule(core_ctx) )
+	{
+		// switch to new task
+		++core_ctx->_task_switches;
+
+		_k_disable_interrupts();
+		isr_stack_t* stack =  (isr_stack_t*)(core_ctx->_running->_esp);
+		// ALLWAYS make sure IF is set when we iret into the new task
+		stack->eflags |= (1<<9);
+		_k_task_yield(curr_ctx, core_ctx->_running);
+	}
+}
+
+void _idle_task(void* obj)
+{	
+	cpu_core_context_t* core_ctx = (cpu_core_context_t*)obj;
+	while(true)
+	{
+		_schedule_next_task(core_ctx);
+		k_pause();
+	}
 }
 
 void k_task_yield(void)
 {
-    _k_disable_interrupts();    
-    task_context_t* curr = (task_context_t*)vector_at(&_tasks, _current_task._val);
-    _schedule_next_task(); 
-    task_context_t* new = (task_context_t*)vector_at(&_tasks, _current_task._val);
-    isr_stack_t* stack =  (isr_stack_t*)(new->_esp);
-    // make sure IF is set when we iret into the new task
-    stack->eflags |= (1<<9);
-    _k_task_yield(curr, new);
+	//TODO: get the actual core context
+	_schedule_next_task(_core0);
 }
 
 __attribute__((__noreturn__)) void k_tasks_init(task_func_t root, void* obj)
 {
-    vector_create(&_tasks, 32, sizeof(task_context_t));
-    __atomic_store_n(&_current_task._val, 0, __ATOMIC_RELAXED);
-    //NOTE: interrupts will be re-enabled when we start the root task
-    unsigned int id = k_task_create(&(task_create_info_t){ ._pri = 0, ._func = root, ._obj = obj });
-    //NOTE: for now the task's ID matches the index into _tasks, but if we allow destroying tasks that could change!
-    task_context_t* ctx = (task_context_t*)vector_at(&_tasks,id);    
+	//TESTING:
+	// this needs to be done per-CPU
+
+	task_context_t* idle_ctx = k_task_create(&(task_create_info_t){ ._pri = kPri_Idle, ._func = _idle_task });
+	_core0 = _k_cpu_core_context_create(&(cpu_core_create_info_t){ ._idle_task = idle_ctx, ._boot = true });
+	idle_ctx->_obj = _core0;
+
+	//printf("idle_ctx = 0x%x, idle_ctx->_obj = 0x%x\n", idle_ctx, idle_ctx->_obj);
+	task_context_t* root_ctx = k_task_create(&(task_create_info_t){ ._pri = kPri_Highest, ._func = root, ._obj = obj });
+	//printf("root_ctx = 0x%x, root_ctx->_obj = 0x%x\n", root_ctx, root_ctx->_obj);
+    queue_push(_core0->_ready + kPri_Highest, &root_ctx);
+
+	// switch to the idle task (always)
     asm volatile("mov %0, %%esp\n\t"
                  "mov %1, %%ebp\n\t"
                  // see https://stackoverflow.com/a/3475763/2030688 for the syntax used here
                  "jmp %P2"
-                : : "r" (ctx->_esp), "r" (ctx->_ebp), "i" (_k_task_switch_point));
+                : : "r" (idle_ctx->_esp), "r" (idle_ctx->_ebp), "i" (_k_task_switch_point));
     __builtin_unreachable();
 }
 
-unsigned int k_task_create(task_create_info_t* info)
+task_context_t* k_task_create(task_create_info_t* info)
 {   
     const size_t aligned_stack_size = (sizeof(isr_stack_t) + kTaskDefaultStackSize + kTaskStackAlignment-1); 
     task_context_t* ctx = (task_context_t*)k_mem_alloc(sizeof(task_context_t)+aligned_stack_size);
@@ -100,7 +118,7 @@ unsigned int k_task_create(task_create_info_t* info)
     //      | isr_stack_struct fields, up until: |  
     //      | eip/cs/flags                       |
     //    
-    _push_32(ctx, (uint32_t)ctx);
+	_push_32(ctx, (uint32_t)ctx);
     _push_32(ctx, (uint32_t)0x0badc0de);
     
     ctx->_esp = (void*)((uintptr_t)ctx->_esp - sizeof(isr_stack_t));
@@ -124,8 +142,5 @@ unsigned int k_task_create(task_create_info_t* info)
     ctx->_ebp = ctx->_esp; 
     stack->ebp = stack->esp = (uintptr_t)ctx->_esp;
 
-    //TODO: this requires us to have interrupts disabled
-    vector_push_back(&_tasks, (void*)ctx);
-    
-    return ctx->_id;
+    return ctx;
 }
