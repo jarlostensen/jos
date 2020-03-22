@@ -2,7 +2,6 @@
 #define _JOS_CPU_H
 
 #include <stdbool.h>
-#include <cpuid.h>
 
 typedef enum cpu_feature_enum
 {
@@ -15,15 +14,22 @@ typedef enum cpu_feature_enum
     kCpuFeature_PAE = 0x40,
     kCpuFeature_APIC = 0x100,
     kCpuFeature_SEP = 0x400,
-    kCpuFeature_ACPI = 0x200000,
+    kCpuFeature_ACPI = 0x200000,    
+    kCpuFeature_LocalAPIC = 1<<9,
+    kCpuFeature_PSE_36 = 1<<17,
+
 } cpu_feature_t;
 
-void k_cpu_init();
+bool k_cpu_check(void);
 
 bool k_cpu_feature_present(cpu_feature_t feature);
 
 // returns the highest extended function number supported by this CPU
-unsigned int k_cpuid_max_extended();
+unsigned int k_cpuid_max_extended(void);
+// returns the highest basic function number supported by this CPU
+unsigned int k_cpuid_max_basic(void);
+// true if running in a hypervisor
+bool k_cpuid_hypervisor(void);
 
 // read MSR
 inline void rdmsr(uint32_t msr, uint32_t* lo, uint32_t* hi)

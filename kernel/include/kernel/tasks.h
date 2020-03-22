@@ -8,31 +8,17 @@
     Switching between tasks uses the stack and the iret instruction for simplicity.
 */
 
-#define _JOS_TASK_PRIOTITY_IDLE      1
-#define _JOS_TASK_PRIORITY_NORMAL    2
-#define _JOS_TASK_PRIORITY_HIGHEST   3
+enum 
+{
+	kPri_Idle = 0,
+	kPri_Low,
+	kPri_Medium,
+	kPri_Highest,
+
+	kPri_NumLevels
+};
 
 typedef void (*task_func_t)(void* obj);
-// a task is described by a context object which contains information about the entry point, stack,
-// priority, etc.
-struct _task_context 
-{
-    unsigned int    _id;
-    // priority
-    unsigned int    _pri;
-    // dedicated task stack top
-    void*           _stack_top;
-    // current esp
-    void*           _esp;
-    // current ebp
-    void*           _ebp;
-    // size of stack
-    size_t          _stack_size;
-    // the entry point for the task (NOTE: this is invoked by a task proxy to control shutdown behaviour etc.)
-    task_func_t     _task_func;
-    // optional argument for the task function
-    void*           _obj;
-} _JOS_PACKED;
 typedef struct _task_context task_context_t;
 
 // initialise task system and switch to the root task
@@ -48,7 +34,7 @@ typedef struct _task_create_info
 // create a task, return the id.
 // this sets up the initial stack and context for the task.
 task_context_t* k_task_create(task_create_info_t* info);
-
 void k_task_yield(void);
+int k_task_priority(const task_context_t* task);
 
 #endif // _JOS_KERNEL_TASKS_H

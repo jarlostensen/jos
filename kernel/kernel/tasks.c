@@ -8,14 +8,33 @@
 #include "cpu_core.h"
 #include <stdio.h>
 
+// a task is described by a context object which contains information about the entry point, stack,
+// priority, etc.
+struct _task_context 
+{
+    unsigned int    _id;
+    // priority
+    unsigned int    _pri;
+    // dedicated task stack top
+    void*           _stack_top;
+    // current esp
+    void*           _esp;
+    // current ebp
+    void*           _ebp;
+    // size of stack
+    size_t          _stack_size;
+    // the entry point for the task (NOTE: this is invoked by a task proxy to control shutdown behaviour etc.)
+    task_func_t     _task_func;
+    // optional argument for the task function
+    void*           _obj;
+} _JOS_PACKED;
+
 static const size_t kTaskDefaultStackSize = 4096;
 static const size_t kTaskStackAlignment = 16;
 // in tasks.asm
 extern void _k_task_switch_point(void);
 extern void _k_task_yield(task_context_t* curr_ctx, task_context_t* new_ctx);
 
-//TESTING
-static cpu_core_context_t	*_core0;
 // unique, always increasing
 static size_t _task_id = 0;
 
@@ -44,17 +63,19 @@ void _task_handler(task_context_t* ctx)
 
 static void _schedule_next_task(cpu_core_context_t* core_ctx)
 {
-	task_context_t* curr_ctx = core_ctx->_running;
+	task_context_t* curr_ctx = _k_cpu_core_running_task(core_ctx);
 	if( _k_cpu_core_context_schedule(core_ctx) )
 	{
 		// switch to new task
-		++core_ctx->_task_switches;
+        //TODO: _k_cpu_core_track_switches(core_ctx);
+		//TODO: ++core_ctx->_task_switches;
 
 		_k_disable_interrupts();
-		isr_stack_t* stack =  (isr_stack_t*)(core_ctx->_running->_esp);
+		isr_stack_t* stack =  (isr_stack_t*)_k_cpu_core_running_task(core_ctx)->_esp;
+        
 		// ALLWAYS make sure IF is set when we iret into the new task
 		stack->eflags |= (1<<9);
-		_k_task_yield(curr_ctx, core_ctx->_running);
+		_k_task_yield(curr_ctx, _k_cpu_core_running_task(core_ctx));
 	}
 }
 
@@ -71,24 +92,29 @@ void _idle_task(void* obj)
 void k_task_yield(void)
 {
 	//TODO: get the actual core context
-	_schedule_next_task(_core0);
+	_schedule_next_task(_k_cpu_core_this());
+}
+
+int k_task_priority(const task_context_t* task)
+{
+    return task->_pri;
 }
 
 __attribute__((__noreturn__)) void k_tasks_init(task_func_t root, void* obj)
 {
-	//TESTING:
-	// this needs to be done per-CPU
-
 	task_context_t* idle_ctx = k_task_create(&(task_create_info_t){ ._pri = kPri_Idle, ._func = _idle_task });
-	_core0 = _k_cpu_core_context_create(&(cpu_core_create_info_t){ ._idle_task = idle_ctx, ._boot = true });
-	idle_ctx->_obj = _core0;
+    // load up the idle task for each CPU
+    void core_create_idle_task(cpu_core_context_t* ctx)    
+    {        
+        _k_cpu_core_add_task(ctx, idle_ctx);
+    }
+    _k_cpu_core_for_each(core_create_idle_task);
 
 	//printf("idle_ctx = 0x%x, idle_ctx->_obj = 0x%x\n", idle_ctx, idle_ctx->_obj);
 	task_context_t* root_ctx = k_task_create(&(task_create_info_t){ ._pri = kPri_Highest, ._func = root, ._obj = obj });
-	//printf("root_ctx = 0x%x, root_ctx->_obj = 0x%x\n", root_ctx, root_ctx->_obj);
-    queue_push(_core0->_ready + kPri_Highest, &root_ctx);
-
-	// switch to the idle task (always)
+    _k_cpu_core_add_task(_k_cpu_core_this(), root_ctx);
+    
+	// now switch to the idle task to start things
     asm volatile("mov %0, %%esp\n\t"
                  "mov %1, %%ebp\n\t"
                  // see https://stackoverflow.com/a/3475763/2030688 for the syntax used here

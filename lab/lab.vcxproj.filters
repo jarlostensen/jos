@@ -42,9 +42,6 @@
     <ClCompile Include="..\kernel\kernel\output_console.c">
       <Filter>kernel</Filter>
     </ClCompile>
-    <ClCompile Include="..\kernel\kernel\cpu_core.c">
-      <Filter>kernel</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\kernel\include\jos.h">

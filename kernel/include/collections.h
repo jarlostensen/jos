@@ -112,6 +112,17 @@ _JOS_INLINE_FUNC void vector_clear(vector_t* vec)
 	vec->_size = 0;
 }
 
+_JOS_INLINE_FUNC void vector_push_back_ptr(vector_t* vec, void* ptr)
+{
+	_JOS_ASSERT(sizeof(void*)==vec->_element_size);
+	vector_push_back(vec, &ptr);
+}
+
+_JOS_INLINE_FUNC void* vector_at_ptr(vector_t* vec, size_t n)
+{
+	return (void*)(*((uintptr_t**)vector_at(vec, n)));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // queue
 
@@ -146,6 +157,13 @@ _JOS_INLINE_FUNC void* queue_front(queue_t* queue)
 	return _vector_at(queue->_elements,queue->_head);
 }
 
+_JOS_INLINE_FUNC void* queue_front_ptr(queue_t* queue)
+{
+	if(queue_is_empty(queue))
+		return 0;
+	return (void*)(*((uintptr_t**)_vector_at(queue->_elements,queue->_head)));
+}
+
 _JOS_INLINE_FUNC void queue_pop(queue_t* queue)
 {
 	if(queue_is_empty(queue))
@@ -158,6 +176,16 @@ _JOS_INLINE_FUNC void queue_push(queue_t* queue, void * element)
 {
 	_JOS_ASSERT(!queue_is_full(queue));
 	_vector_set_at(queue->_elements, queue->_tail, element);
+	queue->_tail = (queue->_tail+1) % vector_capacity(queue->_elements);
+	_vector_increase_size(queue->_elements);
+}
+
+// policy for pointers, pushes the pointer value ptr on to the queue.
+_JOS_INLINE_FUNC void queue_push_ptr(queue_t* queue, void * ptr)
+{
+	_JOS_ASSERT(!queue_is_full(queue));
+	_JOS_ASSERT(sizeof(void*)==queue->_elements->_element_size);
+	_vector_set_at(queue->_elements, queue->_tail, &ptr);
 	queue->_tail = (queue->_tail+1) % vector_capacity(queue->_elements);
 	_vector_increase_size(queue->_elements);
 }

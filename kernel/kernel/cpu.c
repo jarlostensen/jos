@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-// Intel IA dev guide, 19.1.1
+#include <cpuid.h>
 
 //NOTE: if these are clear in REAL mode it's a 286 but...that's not something we check for yet
 #define CPU_FLAGS_8086      (0x7<<12)
@@ -16,208 +16,64 @@
 // max supported basic and extended
 static unsigned int _max_basic_cpuid = 0;
 static unsigned int _max_extended_cpuid = 0;
-static char _vendor_string[32] = {0};
-
+static char _vendor_string[13];
+static bool _hypervisor_checked = false;
+static bool _hypervisor = false;
+static char _hypervisor_id[13];
 static const char* kCpuChannel = "cpu";
 
-// These things are from the ancient Intel MultiProcessor Specification
-// multi processor floating pointer structure
-// found in memory by scanning (see _smp_init)
-typedef struct smp_fp_struct
+unsigned int k_cpuid_max_extended(void)
 {
-    uint32_t    _sig;
-    uint32_t    _phys_address;
-    uint8_t     _length;
-    uint8_t     _specrev;
-    uint8_t     _checksum;
-    uint8_t     _feature_information;
-    uint8_t     _feature_information_2:7;
-    uint8_t     _imcr_present:1;
-    uint8_t     _reserved[3];
-} __attribute__((packed)) smp_fp_t;
-
-typedef struct smp_config_header_struct
-{
-    uint32_t    _sig;
-    uint16_t    _bt_length;
-    uint8_t     _specrev;
-    uint8_t     _checksum;
-    uint8_t     _oem_id[20];
-    uint32_t    _oem_table_ptr;
-    uint16_t    _oem_table_size;
-    uint16_t    _oem_entry_count;
-    uint32_t    _local_apic;
-    uint16_t    _ext_length;
-    uint8_t     _ext_checksum;
-    uint8_t     _reserved;
-} __attribute__((packed)) smp_config_header_t;
-
-typedef struct smp_processor_struct
-{
-    uint8_t     _type;
-    uint8_t     _local_apic_id;
-    uint8_t     _local_apic_version;
-    uint8_t     _flags;
-    uint32_t    _cpu_sig;
-    uint32_t    _feature_flags;
-    uint32_t    _reserved[2];
-} __attribute__((packed)) smp_processor_t;
-
-typedef struct smp_bus_struct
-{
-    uint8_t     _type;
-    uint8_t     _bus_id;
-    uint8_t     _type_string[6];
-} __attribute__((packed)) smp_bus_t;
-
-static const smp_fp_t *_smp_fp = 0;
-static const smp_config_header_t * _smp_config = 0;
-
-static void _smp_init()
-{    
-    static const uint32_t kMpTag = (('_'<<24) | ('P'<<16) | ('M'<<8) | '_');
-    
-    int scan(uint32_t start, const uint32_t length)
-    {        
-        const uint32_t* end = (const uint32_t*)(start + length);
-        uint32_t* rp = (uint32_t*)start;
-        _JOS_KTRACE_CHANNEL(kCpuChannel,"SMP scan 0x%x -> 0x%x\n", rp, end);
-        while(rp<=end)
-        {
-            if(*rp == kMpTag)
-            {                
-                _smp_fp = (smp_fp_t*)rp;
-                if(_smp_fp->_length==1 && (_smp_fp->_specrev == 0x1 || _smp_fp->_specrev == 0x4))
-                {
-                    _JOS_KTRACE_CHANNEL(kCpuChannel,"MP structure @ 0x%x, version 1.%d\n", rp, _smp_fp->_specrev);
-                    return 1;
-                }
-                // this appears to be something we just have to deal with, both VMWare and Bochs contain at least one of these invalid entries.
-            }
-            // skip MP structure size
-            rp = (uint32_t*)((uint8_t*)rp + sizeof(smp_fp_t));
-        }        
-        return 0;
+    if(!_max_extended_cpuid)
+    {
+        _max_extended_cpuid = __get_cpuid_max(0x80000000, NULL);
     }
-
-    // look for SMP signature in candidate RAM regions
-    if(scan(0,0x400) || scan(639 * 0x400, 0x400) || scan(0xf0000,0x10000))
-    {        
-        if(!_smp_fp->_feature_information)
-        {
-            static const uint32_t kPmpTag = (('P'<<24) | ('M'<<16) | ('C'<<8) | 'P');
-            // MP configuration table is present
-            _smp_config = (const smp_config_header_t*)_smp_fp->_phys_address;
-            if(_smp_config->_sig==kPmpTag)
-            {
-                _JOS_KTRACE_CHANNEL(kCpuChannel,"MP configuration table @ 0x%x with %d entries\n", _smp_config,_smp_config->_oem_entry_count);
-                _JOS_KTRACE_CHANNEL_BUF(kCpuChannel,_smp_config->_oem_id, sizeof(_smp_config->_oem_id)); 
-
-                // the OEM entries follow the configuration header
-                // do a pass over these to count them first
-                size_t processor_count = 0;
-                //size_t bus_count = 0;
-                //size_t io_apic = 0;
-                                                
-                const uint8_t* oem_entry_ptr = (const uint8_t*)(_smp_config+1);
-                for(uint16_t n =0; n < _smp_config->_oem_entry_count; n++ )
-                {
-                    switch (oem_entry_ptr[0])
-                    {
-                        case 0:
-                        {
-                            // processor
-                            const smp_processor_t* smp_proc = (const smp_processor_t*)oem_entry_ptr;
-                            if(smp_proc->_flags & 1)
-                            {
-                                _JOS_KTRACE_CHANNEL(kCpuChannel,"processor %d, signature 0x%x, %s\n", processor_count, smp_proc->_cpu_sig, (smp_proc->_flags & 2) ? "boot":"application");                                
-                            }
-                            else
-                            {
-                                _JOS_KTRACE_CHANNEL(kCpuChannel,"processor %d is marked as unusable\n", processor_count);
-                            }
-                            ++processor_count;
-                            oem_entry_ptr += sizeof(smp_processor_t);
-                        }
-                        break;
-                        case 1:
-                        {
-                            // bus
-                            const smp_bus_t* smp_bus = (const smp_bus_t*)oem_entry_ptr;
-                            unsigned char bus_id[6];
-                            memcpy(bus_id, smp_bus->_type_string, 6);
-                            // clean the bus ID string and 0-terminate it.
-                            for(size_t n = 0; n < 6; ++n)
-                            {
-                                // filter out non-printable characters too
-                                if( bus_id[n] == ' ' || ((int)bus_id[n]<32 || ((int)bus_id[n])>127))
-                                {
-                                    bus_id[n] = 0;
-                                    break;
-                                }
-                            }                            
-                            _JOS_KTRACE_CHANNEL(kCpuChannel,"bus %d, %s\n", smp_bus->_bus_id, bus_id);
-                            oem_entry_ptr += sizeof(smp_bus_t);
-                        }
-                        break;
-                        case 2:
-                        {
-                            // I/O apic
-                            //_JOS_KTRACE_CHANNEL(kCpuChannel,"I/O apic\n");
-                            oem_entry_ptr += 8;
-                        }
-                        break;
-                        case 3:
-                        {
-                            // I/O int assignment
-                            //_JOS_KTRACE_CHANNEL(kCpuChannel,"I/O int assignment\n");
-                            oem_entry_ptr += 8;
-                        }
-                        break;
-                        case 4:
-                        {
-                            // local int assignment
-                           // _JOS_KTRACE_CHANNEL(kCpuChannel,"local int assignment\n");
-                            oem_entry_ptr += 8;
-                        }
-                        break;
-                        default:;
-                    }
-                }
-            }                        
-        }
-        else
-        {
-            _JOS_KTRACE_CHANNEL(kCpuChannel,"TODO: default configurations\n");
-        }
-    }
-    else
-    {    
-        _JOS_KTRACE_CHANNEL(kCpuChannel,"no valid _MP_ tag found, processor appears to be single core\n");    
-    }
-}
-
-unsigned int k_cpuid_max_extended()
-{
     return _max_extended_cpuid;
 }
 
-void k_cpu_init()
+unsigned int k_cpuid_max_basic(void)
+{
+    if(!_max_basic_cpuid)
+    {
+        _max_basic_cpuid =  __get_cpuid_max(0, NULL);
+    }
+    return _max_basic_cpuid;
+}
+
+bool k_cpuid_hypervisor(void)
+{
+    if(!_hypervisor_checked)
+    {
+        uint32_t a,b,c,d;
+        __cpuid(0x1, a,b,c,d);
+        _hypervisor = (c & (1<<31))!=0;
+        if(_hypervisor)
+        {
+             unsigned int regs[4];
+            __cpuid(0x40000000, regs[0], regs[1], regs[2], regs[3]);
+            _hypervisor_id[13] = 0;
+            memcpy(_hypervisor_id, regs + 1, 3 * sizeof(regs[0]));
+        }
+        _hypervisor_checked = true;
+    }
+    return _hypervisor;
+}
+
+bool k_cpu_check(void)
 {    
-    _JOS_KTRACE_CHANNEL(kCpuChannel,"k_cpu_init\n");
+    _JOS_KTRACE_CHANNEL(kCpuChannel,"k_cpu_check\n");
     unsigned int flags = k_eflags();
     if((flags & CPU_FLAGS_8086) == CPU_FLAGS_8086)
     {
         _JOS_KTRACE_CHANNEL(kCpuChannel,"error: unsupported CPU (8086)\n");
-        printf("CPU is 8086, sorry...can't run.\n");
-        k_panic();
+        return false;
     }
 
     _max_basic_cpuid = __get_cpuid_max(0, NULL);
     if(!_max_basic_cpuid)
     {
         _JOS_KTRACE_CHANNEL(kCpuChannel,"error: CPUID not supported\n");
-        k_panic();
+        return false;
     }
 
     unsigned int _eax = 0, _ebx, _ecx, _edx;
@@ -232,10 +88,10 @@ void k_cpu_init()
     
     if(!cpu_ok)
     {
-        _JOS_KTRACE_CHANNEL(kCpuChannel,"this CPU does not support 64 bit mode\n");    
+        _JOS_KTRACE_CHANNEL(kCpuChannel,"this CPU does not support 64 bit mode\n");        
+        //TODO: we might make this a hard req at some point, but for now it's not critical
     }
-
-    _JOS_KTRACE_CHANNEL(kCpuChannel,"_max_basic_cpu = %d, _max_extended_cpu = %x\n", _max_basic_cpuid, _max_extended_cpuid);        
+    
     __get_cpuid(0, &_eax, &_ebx, &_ecx, &_edx);
     memcpy(_vendor_string + 0, &_ebx, sizeof(_ebx));
     memcpy(_vendor_string + 4, &_edx, sizeof(_edx));
@@ -248,12 +104,10 @@ void k_cpu_init()
     if( k_cpu_feature_present(kCpuFeature_APIC))
     {
         _JOS_KTRACE_CHANNEL(kCpuChannel,"APIC present\n");
-        _smp_init();
     }
 
     int pae = 0;
-    __cpuid(0x1, _eax, _ebx, _ecx, _edx);
-    if( (_edx & (1<<9)) == (1<<9))
+    if(k_cpu_feature_present(kCpuFeature_LocalAPIC))
     {
         _JOS_KTRACE_CHANNEL(kCpuChannel,"Local APIC present\n");
 
@@ -261,24 +115,19 @@ void k_cpu_init()
         rdmsr(IA32_APIC_BASE_MSR, &apic_lo, &apic_hi);
         _JOS_KTRACE_CHANNEL(kCpuChannel,"APIC base phys address is 0x%lx\n",  (uint64_t)apic_lo | ((uint64_t)apic_hi << 32));
     }
-    if( (_edx & (1<<6)) == (1<<6))
+    if(k_cpu_feature_present(kCpuFeature_PAE))
     {
         _JOS_KTRACE_CHANNEL(kCpuChannel,"PAE supported\n");
         pae = 1;
     }
-    if( (_edx & (1<<17)) == (1<<17))
+    if(k_cpu_feature_present(kCpuFeature_PSE_36))    
     {
         _JOS_KTRACE_CHANNEL(kCpuChannel,"PSE-36 supported\n");
     }
-    if(_ecx & (1<<31))
+    if(k_cpuid_hypervisor())
     {
-        // Hypervisor vendor string
-        unsigned int regs[4];
-        __cpuid(0x40000000, regs[0], regs[1], regs[2], regs[3]);
-        char hypervisor_id[13] = {0};
-        memcpy(hypervisor_id, regs + 1, 3 * sizeof(regs[0]));
-        _JOS_KTRACE_CHANNEL(kCpuChannel,"running in hypervisor, vendor id is \"%s\"\n", hypervisor_id);
-    }    
+        _JOS_KTRACE_CHANNEL(kCpuChannel,"running in hypervisor, vendor id is \"%s\"\n", _hypervisor_id);
+    }
 
     if(k_cpuid_max_extended() >= 0x80000008)
     {
@@ -294,6 +143,8 @@ void k_cpu_init()
             _JOS_KTRACE_CHANNEL(kCpuChannel,"physical address size 32 bits\n");
         _JOS_KTRACE_CHANNEL(kCpuChannel,"linear address size 32 bits\n");
     }    
+
+    return true;
 }
 
 bool k_cpu_feature_present(cpu_feature_t feature)

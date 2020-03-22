@@ -2,7 +2,8 @@
 #ifndef _JOS_H
 #define _JOS_H
 
-#ifdef __GNUC__
+#ifdef _JOS_KERNEL_BUILD
+#define _JOS_MAYBE_UNUSED __attribute__((unused))
 #define _JOS_INLINE_FUNC __attribute__((unused)) static
 
 void _k_trace(const char* channel, const char* msg,...);
@@ -14,6 +15,7 @@ void _k_trace_buf(const char* channel, const void* data, size_t length);
 #define _JOS_KTRACE_BUF(data,length) _k_trace_buf(0, data, length)
 
 #define _JOS_BOCHS_DBGBREAK() asm volatile ("xchg %bx,%bx")
+#define _JOS_GDB_DBGBREAK() asm volatile ("int $03")
 
 #define _JOS_BOCHS_DBGBREAK_TRACE()\
 _k_trace(0, "break at %s:%d\n", __FILE__,__LINE__);\
@@ -24,7 +26,7 @@ asm volatile ("xchg %bx,%bx")
 #define _JOS_ASSERT(cond)\
 if(!(cond))\
 {\
-    _k_trace(0, "assert %s, %s:%d\n", _JOS_ASSERT_COND(cond), __FILE__,__LINE__);\
+    _k_trace(0, "assert %s, %s:%d \n", _JOS_ASSERT_COND(cond), __FILE__,__LINE__);\
     asm volatile ("xchg %bx,%bx");\
 }
 #else
@@ -36,17 +38,23 @@ if(!(cond))\
 #define _JOS_PACKED __attribute__((packed))
 #define _JOS_NORETURN __attribute__((__noreturn__))
 
+#define _JOS_KERNEL_PANIC()\
+    _k_trace(0, "PANIC @ %s:%d \n", __FILE__,__LINE__);\
+    k_panic()
+
 #else
 //TODO: check if this is actually VS, but we're assuming it because we're in control...
-
+#define _JOS_MAYBE_UNUSED
 #define _JOS_INLINE_FUNC static
 #define _JOS_BOCHS_DBGBREAK() __debugbreak()
 
 #define _JOS_BOCHS_DBGBREAK_TRACE() __debugbreak()
+#define _JOS_GDB_DBGBREAK() __debugbreak()
 
 #define _JOS_PACKED
 #define _JOS_NORETURN
 
+#define _JOS_KERNEL_PANIC()
 
 #ifdef _DEBUG
 #define _JOS_ASSERT(cond) if(!(cond)) { __debugbreak(); }

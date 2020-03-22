@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "kernel_detail.h"
 #include "dt.h"
+#include "cpu_core.h"
 #include <multiboot.h>
 
 #include "../arch/i386/hde/hde32.h"
@@ -10,7 +11,6 @@
 #include "memory.h"
 #include "serial.h"
 #include <kernel/clock.h>
-#include <kernel/cpu.h>
 #include <kernel/tasks.h>
 #include <kernel/atomic.h>
 #include <kernel/output_console.h>
@@ -46,11 +46,7 @@ gdt_entry_t _k_gdt16[] = {
 gdt32_descriptor_t _k_gdt16_desc = {.size = sizeof(_k_gdt16), .address = (uint32_t)(_k_gdt16)};
 
 __attribute__((__noreturn__)) void k_panic(void)
-{
-    // white on blue
-    output_console_set_bg(&_stdout, 9);
-    output_console_set_fg(&_stdout, 15);
-    printf("\nKERNEL PANIC!");
+{    
     _k_halt_cpu();
     __builtin_unreachable();
 }
@@ -136,22 +132,28 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
     // this section expects INTERRUPTS TO BE DISABLED
     // ================================================================
     
+    // set up the COM1 port so that we can start tracing logs
     k_serial_init();
+    // set up virtual memory, initialise heaps. 
+    // after this we can use memory "normally"
     k_mem_init(mboot);
+    // set up our "stdout"
     output_console_init();    
    
     printf("=============================================\n");
     printf("This is the jOS kernel\n\n");
 
-    _JOS_KTRACE(kKernChannel,"_k_init\n");
     if(magic!=MULTIBOOT_BOOTLOADER_MAGIC)
     {
         _JOS_KTRACE(kKernChannel,"error: not loaded with multiboot!\n");
-        k_panic();
+        _JOS_KERNEL_PANIC();
     }
-    
-    k_cpu_init();
 
+    // identify processor topology and capabilities of the cpu(s)
+    // this is also where work to initialise multiprocessing, APICs, etc. will/is happen(ing)
+    k_cpu_core_init();
+
+    // set up interrupt handlers
     _k_init_isrs();        
     k_set_isr_handler(0, isr_0_handler);
     k_set_isr_handler(1, isr_1_handler);
@@ -163,9 +165,13 @@ void _k_main(uint32_t magic, multiboot_info_t *mboot)
     k_set_isr_handler(14, _k_mem_page_fault_handler);
     _k_load_isrs();
 
+    // start the clock(s)
     k_clock_init();
+    // WIP: keyboard inptu
     k_keyboard_init();
 
+    // TODO: re-enable this once all the multiprocessor work is done
+    
     // initialise tasks and hand over to the root task (this call never returns)
-    k_tasks_init(_k_modules_root_task, (void*)mboot);
+    // k_tasks_init(_k_modules_root_task, (void*)mboot);
 }

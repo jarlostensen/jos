@@ -45,6 +45,7 @@ inline void output_console_create(output_console_t* con)
 	_JOS_ASSERT(con->_columns);
 	const int buffer_byte_size = con->_rows*con->_columns*sizeof(uint16_t);
 	con->_buffer = (uint16_t*)malloc(buffer_byte_size);
+	_JOS_ASSERT(con->_buffer);
 	con->_start_row = 0;
 	con->_col = con->_row = 0;
 	memset(con->_buffer, 0, buffer_byte_size);

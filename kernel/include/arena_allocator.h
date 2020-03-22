@@ -189,15 +189,13 @@ vmem_arena_t*   vmem_arena_create(void* mem, size_t size)
 	vmem_block_tail_t* tail = _vmem_tail_from_head(arena->_free_head);
 	tail->_size = _vmem_tail_free_size(arena->_free_head);
 
-	_JOS_KTRACE("vmem: arena created @ 0x%x, free @ 0x%x, tail at 0x%x\n", (int)arena, (int)arena->_free_head, (int)tail);
-
     return arena;
 }
 
 void* vmem_arena_alloc(vmem_arena_t* arena, size_t size)
 {
 	if(!size)
-	{
+	{		
 		return 0;
 	}
 
