@@ -43,6 +43,11 @@ align 4096
 section .data
 extern _k_gdt_desc
 
+; set to 1 of a20 was enabled on boot, 0 otherwise
+global _k_a20_was_enabled_on_boot
+ _k_a20_was_enabled_on_boot:
+    dd 0
+
 section .rodata
 ; empty
 
@@ -262,7 +267,7 @@ _start:
         jne .fi
 
         cli
-        
+
         lea ebp, [dword (_k_stack_top - KERNEL_VMA_OFFSET)]
         mov esp, ebp
         
@@ -325,6 +330,13 @@ _start:
         mov ss, ax
         jmp dword 08h:.flush_gdt
     .flush_gdt:        
+        
+        ; TESTING:
+        ; a20 "fast" enable, this might crash and burn on some older computers...
+        in al, 0x92
+        or al, 2
+        out 0x92, al
+
         push dword [main_args]              ; ebx = multiboot pointer
         push dword [main_args+4]            ; eax = multiboot magic number
         call _k_main

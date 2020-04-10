@@ -37,7 +37,7 @@ void output_console_flush(output_console_t* con)
 	_JOS_ASSERT(con->_buffer);
 	const size_t input_stride = (size_t)con->_columns * 2;
 
-	if (con->_start_row < con->_row)
+	if (con->_start_row <= con->_row)
 	{
 		int lines_to_flush = min(con->_row + 1, _vga_height);
 		const int flush_start_row = con->_row - min(_vga_height - 1, con->_row - con->_start_row);

@@ -69,8 +69,7 @@ typedef struct smp_bus_struct
 static const smp_fp_t *_smp_fp = 0;
 static const smp_config_header_t * _smp_config = 0;
 
-// all system tables use the same checksum algorithm
-static bool _validate_st_checksum(void* table, size_t size)
+static unsigned char _calculate_st_checksum(void* table, size_t size)
 {
     unsigned char chksum = 0;
     unsigned char* rp = (unsigned char*)table;
@@ -78,13 +77,21 @@ static bool _validate_st_checksum(void* table, size_t size)
     {
         chksum += *rp++;
     }
-    return chksum==0 ? true : false;
+    return chksum;
+}
+
+// all system tables use the same checksum algorithm
+static bool _validate_st_checksum(void* table, size_t size)
+{
+    return _calculate_st_checksum(table,size)==0 ? true : false;
 }
 
 // =============================== RSDP (Root System Description Pointer)
 struct _rsdp_descriptor {
     // all versions
     // 20 bytes
+
+    // "RSD PTR "
     char    _sig[8];
     uint8_t _checksum;
     char    _oem_id[6];
@@ -115,6 +122,7 @@ _JOS_MAYBE_UNUSED static bool _valid_rsdp_20_checksum(rsdp_descriptor_t* desc)
 rsdp_descriptor_t * _rsdp_desc = 0;
 
 // The SDTs (System Descriptor Table) are found from the RSDP and all SDT entries share this header 
+// the sice of this structure is 0x20 bytes
 struct _sdt_header 
 {
   char      _signature[4];
@@ -149,6 +157,20 @@ _JOS_MAYBE_UNUSED static size_t _rsdt_pointer_table_size(sdt_header_t* header)
 _JOS_MAYBE_UNUSED static size_t _xsdt_pointer_table_size(sdt_header_t* header)
 {
     return (header->_length - sizeof(sdt_header_t))/sizeof(uint64_t);
+}
+
+_JOS_MAYBE_UNUSED static void _dump_sdt_headers(sdt_header_t* header)
+{    
+    size_t num_entries = _rsdt_pointer_table_size(header);    
+    _JOS_KTRACE_CHANNEL(kCpuCoreChannel, "%d headers\n", num_entries);
+    while(num_entries--)
+    {
+        bool valid_checksum = _calculate_st_checksum(header,sizeof(sdt_header_t));
+        _JOS_KTRACE_CHANNEL(kCpuCoreChannel, "%s sdt header @ 0x%x\n\t_signature: %4s\n\t_length = %d\n\t_oem_id = %6s\n\t_oem_table_id = %8s\n\t_creator_id = %4s\n", 
+        valid_checksum ? "valid" : "invalid", header, header->_signature, header->_length, header->_oem_id, header->_oem_table_id, &header->_creator_id);
+
+        header =(sdt_header_t*)(((char*)header + header->_length));
+    }
 }
 
 // ==================================================================
@@ -347,7 +369,7 @@ static void _scan_rsdp(void)
                 if((desc->_revision && _valid_rsdp_20_checksum(desc)) || _valid_rsdp_checksum(desc))
                 {
                     _JOS_KTRACE_CHANNEL(kCpuCoreChannel,"valid RSDP structure @ 0x%x, ACPI v%d\n", rp, desc->_revision==0?1:2);
-                    _JOS_KTRACE_CHANNEL_BUF(kCpuCoreChannel, desc->_oem_id, sizeof(desc->_oem_id));
+                    _JOS_KTRACE_CHANNEL_BUF(kCpuCoreChannel, desc->_sig, sizeof(desc->_sig));
                     _rsdp_desc = desc;
                     return;
                 }
@@ -402,12 +424,19 @@ static void _smp_init(void)
     }
     else
     {
-        _JOS_KTRACE_CHANNEL(kCpuCoreChannel,"SDT header @ 0x%x\n", _rsdp_desc->_rsdt_address);
+        _JOS_KTRACE_CHANNEL(kCpuCoreChannel,"RSDT @ phys 0x%x\n", _rsdp_desc->_rsdt_address);
+        // map it somewhere so that we can access it
         void* rsdt_vmem = _k_vmem_reserve_range(1);
         _k_vmem_map((uintptr_t)rsdt_vmem, _rsdp_desc->_rsdt_address);
+        _dump_sdt_headers((sdt_header_t*)rsdt_vmem);
 
-        sdt_header_t* sdt = (sdt_header_t*)rsdt_vmem;
-        _JOS_KTRACE_CHANNEL(kCpuCoreChannel,"%d entries in table 0x%x\n", _rsdt_pointer_table_size(sdt), _sdt_pointer_table(sdt));
+        if (_validate_st_checksum(rsdt_vmem, ((sdt_header_t*)rsdt_vmem)->_length) )
+        {
+            sdt_header_t* sdt = (sdt_header_t*)rsdt_vmem;
+            _JOS_KTRACE_CHANNEL(kCpuCoreChannel,"%d entries in table 0x%x\n", _rsdt_pointer_table_size(sdt), _sdt_pointer_table(sdt));
+            _JOS_KTRACE_CHANNEL_BUF(kCpuCoreChannel, sdt->_signature, sizeof(sdt->_signature));
+        }
+
         // uint32_t* ptr_entries = _sdt_pointer_table(sdt);
         // for(size_t n = _rsdt_pointer_table_size(sdt); n>0; --n)
         // {

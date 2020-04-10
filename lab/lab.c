@@ -187,7 +187,6 @@ static size_t _memory_map_dword_count = 0;
 static uintptr_t	_vmem_address_pool[_JOS_KERNEL_VMEM_ADDRESS_POOL_SIZE];
 static size_t		_vmem_range_info[_JOS_KERNEL_VMEM_ADDRESS_POOL_SIZE];
 
-
 void vmem_init(void)
 {
 	// each bit denotes a 4K page
@@ -240,11 +239,11 @@ vmem_range_t* vmem_allocate(size_t bytes)
 	{
 		uint32_t dw = _memory_map[n];
 		if (cont_run || dw != 0xffffffff)
-		{			
+		{
 			if (!dw)
 			{
-				if(!cont_run)
-					start_page = (n<<5);
+				if (!cont_run)
+					start_page = (n << 5);
 				cont_run += 32;
 				if (cont_run >= pages)
 				{
@@ -252,21 +251,21 @@ vmem_range_t* vmem_allocate(size_t bytes)
 				}
 			}
 			else
-			{				
+			{
 				//TODO: use some bitscan or popcount variant instruction here
 				for (size_t bit = 0; bit < 32 && (dw & 1) == 0; ++bit)
 				{
 					cont_run += (dw & 1) ^ 1;
-					if(!start_page && cont_run)
+					if (!start_page && cont_run)
 					{
-						start_page = (n<<5) + bit;
+						start_page = (n << 5) + bit;
 					}
 					dw >>= 1;
 					if (cont_run >= pages)
 					{
 						return _vmem_make_range(start_page * _JOS_KERNEL_PAGE_SIZE, pages);
 					}
-				}	
+				}
 			}
 			if (dw)
 			{
@@ -453,7 +452,7 @@ void test_vmap(void)
 {
 	vmem_init();
 	// initialise vm ranges
-	
+
 
 	_vmem_mark_range(0, 0x100000 / 0x1000);
 	_vmem_mark_range(0x101000, 2);
@@ -467,6 +466,7 @@ void test_vmap(void)
 // misc
 
 extern int _JOS_LIBC_FUNC_NAME(printf)(const char* __restrict format, ...);
+extern int _JOS_LIBC_FUNC_NAME(sprintf_s)(char* __restrict buffer, size_t buffercount, const char* __restrict format, ...);
 
 void test_stdio(void)
 {
@@ -533,6 +533,8 @@ void init_console(void)
 
 void test_console(void)
 {
+	char sig[4] = { 'a','b','c','d' };
+	_JOS_LIBC_FUNC_NAME(printf)("test line %4s...\n", sig);
 	for (int n = 0; n < 50; ++n)
 	{
 		_JOS_LIBC_FUNC_NAME(printf)("line\t%d\n", n);
@@ -541,12 +543,221 @@ void test_console(void)
 	_JOS_LIBC_FUNC_NAME(printf)("last line");
 }
 
+enum hex_dump_unit_size
+{
+	k8bitInt,
+	k16bitInt,
+	k32bitInt,
+	k64bitInt,
+};
+
+
+typedef struct _line_ctx
+{
+	char		_line[80];
+	char*		_wp;
+	size_t		_chars_left;
+	void*		_mem;
+	
+} line_ctx_t;
+
+static void _mem_dump_line_init(line_ctx_t* ctx, void* mem)
+{
+	ctx->_wp = ctx->_line;
+	ctx->_mem = mem;
+	ctx->_chars_left = sizeof(ctx->_line);	
+	// address prefix
+	size_t n = _JOS_LIBC_FUNC_NAME(sprintf_s)(ctx->_wp, ctx->_chars_left,"%08x ", (uintptr_t)mem);
+	ctx->_wp += n;
+	ctx->_chars_left -= n;
+}
+
+static void _mem_dump_line_write_byte(line_ctx_t* ctx, unsigned char byte, int fmtIdx)
+{
+	static const char* kFmt[2] = {"%02x ", "%02x"};
+	size_t n = _JOS_LIBC_FUNC_NAME(sprintf_s)(ctx->_wp, ctx->_chars_left, kFmt[fmtIdx], byte);	
+	ctx->_wp += n;
+	ctx->_chars_left -= n;
+}
+
+static void _mem_dump_line_write_word(line_ctx_t* ctx, unsigned short word)
+{
+	size_t n = _JOS_LIBC_FUNC_NAME(sprintf_s)(ctx->_wp, ctx->_chars_left, "%04x ", word);
+	ctx->_wp += n;
+	ctx->_chars_left -= n;
+}
+
+static void _mem_dump_line_write_dword(line_ctx_t* ctx, unsigned int dword)
+{
+	if(dword == 0xc168108)
+		__debugbreak();
+	size_t n = _JOS_LIBC_FUNC_NAME(sprintf_s)(ctx->_wp, ctx->_chars_left, "%08lx ", dword);
+	ctx->_wp += n;
+	ctx->_chars_left -= n;
+}
+
+static void _mem_dump_line_write_qword(line_ctx_t* ctx, unsigned long long qword)
+{
+	size_t n = _JOS_LIBC_FUNC_NAME(sprintf_s)(ctx->_wp, ctx->_chars_left, "%016llx ", qword);
+	ctx->_wp += n;
+	ctx->_chars_left -= n;
+}
+
+static void _mem_dump_line_write_raw(line_ctx_t* ctx, size_t byte_run)
+{
+	// right aligned	
+	memset(ctx->_wp, ' ', ctx->_chars_left);	
+	char* wp = ctx->_line + 58;
+	ctx->_chars_left = sizeof(ctx->_line) - 58;
+	const unsigned char* rp = (unsigned char*)ctx->_mem;
+	for (unsigned i = 0u; i < byte_run; ++i)
+	{
+		const char c = (char)*rp++;
+		size_t n;
+		if(c >= 32 && c < 127)
+		{
+			n = _JOS_LIBC_FUNC_NAME(sprintf_s)(wp, ctx->_chars_left, "%c", c);
+		}
+		else
+		{
+			n = _JOS_LIBC_FUNC_NAME(sprintf_s)(wp, ctx->_chars_left, ".");
+		}
+		ctx->_chars_left -= n;
+		wp += n;
+	}
+}
+
+static size_t _mem_dump_hex_line(void* mem, size_t bytes, enum hex_dump_unit_size unit_size)
+{
+	line_ctx_t ctx;
+	size_t read = 0;	
+	
+	if (bytes)
+	{				
+		_mem_dump_line_init(&ctx, (uintptr_t)mem);		
+		const unsigned byte_run = min(bytes, 16);
+
+		switch (unit_size)
+		{
+		case k8bitInt:
+		{
+			char* rp = (char*)mem;
+			for (unsigned i = 0u; i < byte_run; ++i)
+			{
+				_mem_dump_line_write_byte(&ctx, (unsigned char)*rp++,0);
+				++read;
+			}
+		}
+		break;
+		case k16bitInt:
+		{
+			unsigned short* rp = (unsigned short*)mem;
+			unsigned run = min(byte_run/2, 8);
+			for (unsigned i = 0u; i < run; ++i)
+			{
+				_mem_dump_line_write_word(&ctx, *rp++);
+				read+=sizeof(unsigned short);
+			}
+			if ( byte_run & 1 )
+			{
+				run = byte_run & 1;
+				for (unsigned i = 0u; i < run; ++i)
+				{
+					_mem_dump_line_write_byte(&ctx, (unsigned char)*rp++, 1);
+					++read;
+				}
+			}
+		}
+		break;
+		case k32bitInt:
+		{
+			unsigned int* rp = (unsigned int*)mem;
+			unsigned run = min(byte_run/4, 4);
+			for (unsigned i = 0u; i < run; ++i)
+			{
+				_mem_dump_line_write_dword(&ctx, *rp++);
+				read+=sizeof(unsigned int);
+			}
+			if ( byte_run & 3 )
+			{
+				run = byte_run & 3;
+				for (unsigned i = 0u; i < run; ++i)
+				{
+					_mem_dump_line_write_byte(&ctx, (unsigned char)*rp++, 1);
+					++read;
+				}
+			}
+		}
+		break;
+		case k64bitInt:
+		{
+			unsigned long long* rp = (unsigned long long*)mem;
+			unsigned run = min(byte_run/8, 2);
+			for (unsigned i = 0u; i < run; ++i)
+			{
+				_mem_dump_line_write_qword(&ctx, *rp++);
+				read+=sizeof(unsigned long long);
+			}
+			if ( byte_run & 7 )
+			{
+				run = byte_run & 7;
+				for (unsigned i = 0u; i < run; ++i)
+				{
+					_mem_dump_line_write_byte(&ctx, (unsigned char)*rp++, 1);
+					++read;
+				}
+			}
+		}
+		break;
+		default:;
+		}
+
+		_mem_dump_line_write_raw(&ctx, byte_run);
+	}
+	
+	if(read)
+	{				
+		_JOS_LIBC_FUNC_NAME(printf)("%s\n",ctx._line);
+	}
+	return read;
+}
+
+
+
+void mem_dump_hex(void* mem, size_t bytes, enum hex_dump_unit_size unit_size)
+{	
+	while (bytes)
+	{
+		size_t written = _mem_dump_hex_line(mem, bytes, unit_size);		
+		mem = (void*)((char*)mem + written);
+		bytes -= written;
+	}
+	vga_draw();
+}
+
+void test_hexdump()
+{
+	srand(101);
+	static const size_t kSomeMemorySize = 127;
+	void* some_memory = malloc(kSomeMemorySize);
+	char* s = (char*)some_memory;	
+	int n = 1 + sprintf_s(s, kSomeMemorySize, "this is a string\n");
+	for(;n<kSomeMemorySize;++n)
+	{
+		s[n] = (char)(rand() & 0xff);
+	}
+	mem_dump_hex(some_memory, kSomeMemorySize, k16bitInt);
+
+	free(some_memory);
+}
+
 int main(void)
 {
 	init_console();
 	//test_console();
-
-	test_hypervisor();
+	
+	test_hexdump();
+ 	test_hypervisor();
 	test_vector();
 	test_mem();
 	test_queue();
