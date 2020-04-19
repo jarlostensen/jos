@@ -554,7 +554,7 @@ enum hex_dump_unit_size
 
 typedef struct _line_ctx
 {
-	char		_line[80];
+	char		_line[128];
 	char*		_wp;
 	size_t		_chars_left;
 	void*		_mem;
@@ -738,7 +738,7 @@ void mem_dump_hex(void* mem, size_t bytes, enum hex_dump_unit_size unit_size)
 void test_hexdump()
 {
 	srand(101);
-	static const size_t kSomeMemorySize = 127;
+	static const size_t kSomeMemorySize = 49;
 	void* some_memory = malloc(kSomeMemorySize);
 	char* s = (char*)some_memory;	
 	int n = 1 + sprintf_s(s, kSomeMemorySize, "this is a string\n");
@@ -746,7 +746,13 @@ void test_hexdump()
 	{
 		s[n] = (char)(rand() & 0xff);
 	}
+	mem_dump_hex(some_memory, kSomeMemorySize, k8bitInt);
+	printf("\n");
 	mem_dump_hex(some_memory, kSomeMemorySize, k16bitInt);
+	printf("\n");
+	mem_dump_hex(some_memory, kSomeMemorySize, k32bitInt);
+	printf("\n");
+	mem_dump_hex(some_memory, kSomeMemorySize, k64bitInt);
 
 	free(some_memory);
 }

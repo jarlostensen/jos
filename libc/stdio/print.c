@@ -96,10 +96,10 @@ static int printhex(ctx_t* ctx, int width, long long d)
 		const unsigned long output_prefix_width = __builtin_clzll(d);
 #else
 		unsigned long d_width;
-		(_BitScanReverse(&d_width, d), ++d_width);
+		(_BitScanReverse64(&d_width, d), ++d_width);
 		d_width = (d_width / 4) + (d_width & 3 ? 1 : 0);		
 #endif
-		if (width > d_width)
+		if (width >= (int)d_width)
 		{
 			width -= d_width;			
 		}
