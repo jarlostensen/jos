@@ -40,6 +40,7 @@ kernel/ktrace.o \
 kernel/memory.o \
 kernel/tasks.o \
 kernel/output_console.o \
+kernel/hex_dump.o \
 kernel/keyboard.o \
 kernel/cpu_core.o \
 

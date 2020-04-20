@@ -42,6 +42,9 @@
     <ClCompile Include="..\kernel\kernel\output_console.c">
       <Filter>kernel</Filter>
     </ClCompile>
+    <ClCompile Include="..\kernel\kernel\hex_dump.c">
+      <Filter>kernel</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\kernel\include\jos.h">
@@ -64,6 +67,9 @@
     </ClInclude>
     <ClInclude Include="..\kernel\arch\i386\vga.h">
       <Filter>kernel\arch\i386</Filter>
+    </ClInclude>
+    <ClInclude Include="..\kernel\include\hex_dump.h">
+      <Filter>kernel</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
