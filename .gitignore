@@ -58,4 +58,3 @@ Module.symvers
 Mkfile.old
 dkms.conf
 sysroot/
-*.bxrc
